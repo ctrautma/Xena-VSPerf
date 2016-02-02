@@ -66,6 +66,7 @@ class Xena(object):
     Xena Traffic generator wrapper
     """
     _traffic_defaults = TRAFFIC_DEFAULTS.copy()
+    _logger = logging.getLogger(__name__)
 
     def __init__(self):
         self.mono_pipe = None
@@ -134,7 +135,7 @@ class Xena(object):
         """
         self._xsocket = XenaSocket(TRAFFICGEN_IP)
         if not self._xsocket.connect():
-            print("Error connecting to Xena IP {}".format(TRAFFICGEN_IP))
+            self._logger.debug("Error connecting to Xena IP {}".format(TRAFFICGEN_IP))
             sys.exit(-1)
 
         # create the manager session
@@ -184,12 +185,12 @@ class Xena(object):
 
         port0 = self.xm.add_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
         if not port0:
-            print("Fail to add port " + str(TRAFFICGEN_PORT1))
+            self._logger.debug("Fail to add port " + str(TRAFFICGEN_PORT1))
             sys.exit(-1)
 
         port1 = self.xm.add_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
         if not port1:
-            print("Fail to add port" + str(TRAFFICGEN_PORT2))
+            self._logger.debug("Fail to add port" + str(TRAFFICGEN_PORT2))
             sys.exit(-1)
 
         # Clear port configuration for a clean start
@@ -202,15 +203,15 @@ class Xena(object):
 
         # setup stream params
         if not all([
-             s1_p0.set_packet_header(self._build_test_packet()),
-             s1_p0.set_packet_length_fixed(TRAFFIC_DEFAULTS['l2']['framesize'],
-                                       16383),
-             s1_p0.set_packet_payload_incrementing('0x00'),
-             s1_p0.set_packet_limit(numpkts),
-             s1_p0.set_rate_fraction(framerate*10000),
-             s1_p0.set_test_payload_id(0)]):
-             print("Error setting up stream settings. Check config and retry")
-             sys.exit(1)
+            s1_p0.set_packet_header(self._build_test_packet()),
+            s1_p0.set_packet_length_fixed(TRAFFIC_DEFAULTS['l2']['framesize'],
+                                      16383),
+            s1_p0.set_packet_payload_incrementing('0x00'),
+            s1_p0.set_packet_limit(numpkts),
+            s1_p0.set_rate_fraction(framerate*10000),
+            s1_p0.set_test_payload_id(0)]):
+            self._logger.debug("Error setting up stream settings. Check config and retry")
+            sys.exit(1)
 
         port0.clear_all_tx_stats()
         port0.clear_all_rx_stats()
@@ -219,7 +220,7 @@ class Xena(object):
 
         # start/[wait]/stop the traffic
         if not port0.start_traffic():
-            print("Failure to start traffic. Check settings and retry.")
+            self._logger.debug("Failure to start traffic. Check settings and retry.")
             sys.exit(1)
         Time.sleep(5)
         port0.stop_traffic()
@@ -278,12 +279,12 @@ class Xena(object):
 
         port0 = self.xm.add_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
         if not port0:
-            print("Fail to add port " + str(TRAFFICGEN_PORT1))
+            self._logger.debug("Fail to add port " + str(TRAFFICGEN_PORT1))
             sys.exit(-1)
 
         port1 = self.xm.add_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
         if not port1:
-            print("Fail to add port" + str(TRAFFICGEN_PORT2))
+            self._logger.debug("Fail to add port" + str(TRAFFICGEN_PORT2))
             sys.exit(-1)
 
         s1_p0 = port0.add_stream(1)
@@ -296,7 +297,7 @@ class Xena(object):
                                       16383)
         s1_p0.set_packet_payload_incrementing('0x00')
 
-        s1_p0.set_packet_limit(numpkts) # TODO why when we disable this above? -CT
+        s1_p0.set_packet_limit(numpkts)
         s1_p0.set_test_payload_id(0)
 
         # TODO this command doesn't work? XenaStream doesn't have this method -CT
@@ -357,12 +358,12 @@ class Xena(object):
 
         port0 = self.xm.add_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
         if not port0:
-            print("Fail to add port " + str(TRAFFICGEN_PORT1))
+            self._logger.debug("Fail to add port " + str(TRAFFICGEN_PORT1))
             sys.exit(-1)
 
         port1 = self.xm.add_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
         if not port1:
-            print("Fail to add port" + str(TRAFFICGEN_PORT2))
+            self._logger.debug("Fail to add port" + str(TRAFFICGEN_PORT2))
             sys.exit(-1)
 
         s1_p0 = port0.add_stream(1)
