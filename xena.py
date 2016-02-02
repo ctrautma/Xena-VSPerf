@@ -18,16 +18,25 @@ Xena Traffic Generator Model
 # TODO update Back2Back method description when Result implementation will
 # be ready.
 
+# TODO CT List of things that need to be completed
+# 1. Fix Result dictionaries so they work, currently the lookups into the
+#    dictionaries are failing on keys
+# 2. Numpkts in params should be moved to config file
+# 3. Flavios libraries not python3 compatible. Either write another driver or
+#    find another solution
+# 4. Move port, ip, logon name to config file per traffic gen spec
+
 #VSPerf imports
-from trafficgenhelper import TRAFFIC_DEFAULTS
+from trafficgenhelper import TRAFFIC_DEFAULTS, merge_spec
 import trafficgen
 
 #python imports
 import json
+import logging
 import os
 import subprocess
 import sys
-import time
+import time as Time
 import xml.etree.ElementTree as ET
 
 #XenaPythonLib imports
@@ -36,17 +45,18 @@ from XenaPythonLib.XenaSocket import XenaSocket
 from XenaPythonLib.XenaStream import XenaStream
 
 # scapy imports
-# TODO this package will not work in 3.x python -CT
-#import scapy.layers.inet as inet
-#import scapy.utils as utils
+# pip install scapy to install
+if int(sys.version[0]) < 3:
+    import scapy.layers.inet as inet
+    import scapy.utils as utils
 
 # TODO need to move this to the conf file as other generators use -CT
-TRAFFICGEN_IP = '131.164.227.250'
+TRAFFICGEN_IP = '10.19.15.19'
 TRAFFICGEN_PORT1 = '0'
 TRAFFICGEN_PORT2 = '1'
 TRAFFICGEN_USER = 'vsperf'
-TRAFFICGEN_MODULE1 = '11'
-TRAFFICGEN_MODULE2 = '11'
+TRAFFICGEN_MODULE1 = '3'
+TRAFFICGEN_MODULE2 = '3'
 
 # This needs to be changed to inherit the trafficgen.ITrafficGenerator abstract
 # class. I have left it out currently because it calls into specific VSPerf
@@ -89,19 +99,26 @@ class Xena(object):
         self.disconnect()
 
     def _build_test_packet(self):
-        # TODO cannot use...scapy not compatible with 3.x python -CT
-        # L2 = inet.Ether(src=TRAFFIC_DEFAULTS['l2']['srcmac'],
-        #                 dst=TRAFFIC_DEFAULTS['l2']['dstmac'])
-        # L3 = inet.IP(src=TRAFFIC_DEFAULTS['l3']['srcip'],
-        #              dst=TRAFFIC_DEFAULTS['l3']['dstip'],
-        #              proto=TRAFFIC_DEFAULTS['l3']['proto'])
-        # #L4 = inet.TCP(src=TRAFFIC_DEFAULTS['l2']['srcport'],
-        # #              dst=TRAFFIC_DEFAULTS['l2']['dstport'])
-        # packet = L2/L3
-        # packet_str = str(packet)
-        # packet_hex = '0x' + packet_str.encode('hex')
-        # return packet_hex
-        # # VLANS needs to addressed as well.
+        """
+        pass
+        """
+        try:
+            L2 = inet.Ether(src=TRAFFIC_DEFAULTS['l2']['srcmac'],
+                            dst=TRAFFIC_DEFAULTS['l2']['dstmac'])
+            L3 = inet.IP(src=TRAFFIC_DEFAULTS['l3']['srcip'],
+                         dst=TRAFFIC_DEFAULTS['l3']['dstip'],
+                         proto=TRAFFIC_DEFAULTS['l3']['proto'])
+            #L4 = inet.TCP(src=TRAFFIC_DEFAULTS['l2']['srcport'],
+            #              dst=TRAFFIC_DEFAULTS['l2']['dstport'])
+            packet = L2/L3
+            packet_str = str(packet)
+            packet_hex = '0x' + packet_str.encode('hex')
+        except NameError:
+            # use basic header because scapy not compatible with python 3
+            packet_hex = ('0x525400c61020525400c61010080045000014000100004' +
+                          '00066e70a0000010a000002')
+        return packet_hex
+        # TODO VLANS needs to addressed as well.
 
     def connect(self):
         """Connect to the traffic generator.
@@ -155,6 +172,13 @@ class Xena(object):
             - List of List of Rx Bytes,
             - Payload Errors and Sequence Errors.
         """
+
+        self._params = {}
+        self._params['traffic'] = self.traffic_defaults.copy()
+        if traffic:
+            self._params['traffic'] = merge_spec(
+                    self._params['traffic'], traffic)
+
         if self.xm == None:
             self.connect()
 
@@ -174,14 +198,19 @@ class Xena(object):
 
         # Add one stream for port 0
         s1_p0 = port0.add_stream(1)
+        s1_p0.set_stream_on()
 
-        s1_p0.set_packet_header(self._build_test_packet())
-        s1_p0.set_packet_length_fixed(TRAFFIC_DEFAULTS['l2']['framesize'],
-                                      16383)
-        s1_p0.set_packet_payload_incrementing('0x00')
-        s1_p0.set_packet_limit(numpkts)
-        s1_p0.set_rate_fraction(framerate*10000)
-        s1_p0.set_test_payload_id(0)
+        # setup stream params
+        if not all([
+            s1_p0.set_packet_header(self._build_test_packet()),
+            s1_p0.set_packet_length_fixed(TRAFFIC_DEFAULTS['l2']['framesize'],
+                                      16383),
+            s1_p0.set_packet_payload_incrementing('0x00'),
+            s1_p0.set_packet_limit(numpkts),
+            s1_p0.set_rate_fraction(framerate*10000),
+            s1_p0.set_test_payload_id(0)]):
+            print("Error setting up stream settings. Check config and retry")
+            sys.exit(1)
 
         port0.clear_all_tx_stats()
         port0.clear_all_rx_stats()
@@ -189,8 +218,10 @@ class Xena(object):
         port1.clear_all_rx_stats()
 
         # start/[wait]/stop the traffic
-        port0.start_traffic()
-        time.sleep(time)
+        if not port0.start_traffic():
+            print("Failure to start traffic. Check settings and retry.")
+            sys.exit(1)
+        Time.sleep(5)
         port0.stop_traffic()
 
         #getting results
@@ -199,17 +230,20 @@ class Xena(object):
         tx_stats = port0.dump_all_tx_stats()
         rx_stats = port1.dump_all_rx_stats()
 
+        txkey = tx_stats.keys()[0]
+        rxkey = rx_stats.keys()[0]
+
         result = {}
-        result['framesSent'] = tx_stats['pt_stream_0'][3]
-        result['framesRecv'] = rx_stats['pr_tpldstraffic'][0][3]
-        result['bytesSent'] = tx_stats['pt_stream_0'][2]
-        result['bytesRecv'] = rx_stats['pr_tpldstraffic'][0][2]
-        result['payError'] = rx_stats['pr_tplderrors'][0][2]
-        result['seqError'] = rx_stats['pr_tplderrors'][0][0]
+        result['framesSent'] = tx_stats[txkey]['pt_stream_1']['packets']
+        result['framesRecv'] = rx_stats[rxkey]['pr_tpldstraffic'][0][3]
+        result['bytesSent'] = tx_stats[txkey]['pt_stream_1']['bytes']
+        result['bytesRecv'] = rx_stats[rxkey]['pr_tpldstraffic'][0][2]
+        result['payError'] = rx_stats[rxkey]['pr_tplderrors'][0][2]
+        result['seqError'] = rx_stats[rxkey]['pr_tplderrors'][0][0]
 
         return result
 
-    def send_cont_traffic(self, traffic=None, time=20, framerate=0):
+    def send_cont_traffic(self, traffic=None, numpkts=100, time=20, framerate=0):
         """Send a continuous flow of traffic.
 
         Send packets at ``framerate``, using ``traffic`` configuration,
@@ -232,6 +266,13 @@ class Xena(object):
             - Max Latency (ns),
             - Avg Latency (ns)
         """
+
+        self._params = {}
+        self._params['traffic'] = self.traffic_defaults.copy()
+        if traffic:
+            self._params['traffic'] = merge_spec(
+                    self._params['traffic'], traffic)
+
         if self.xm == None:
             self.connect()
 
@@ -255,36 +296,46 @@ class Xena(object):
                                       16383)
         s1_p0.set_packet_payload_incrementing('0x00')
 
-        # TODO numpkts not implemented in this function. -CT
         s1_p0.set_packet_limit(numpkts)
         s1_p0.set_test_payload_id(0)
 
-        s1_p0.set_tx_time_limit_ms(time*1000) #automatic stop
+        # TODO this command doesn't work? XenaStream doesn't have this method -CT
+        #s1_p0.set_tx_time_limit_ms(time*1000) #automatic stop
+
+        # TODO CT is this ok to clear these again?
+        port0.clear_all_tx_stats()
+        port0.clear_all_rx_stats()
+        port1.clear_all_tx_stats()
+        port1.clear_all_rx_stats()
 
         # start the traffic
         port0.start_traffic()
-        time.sleep(time)
+        Time.sleep(time)
 
         #getting results
         port0.grab_all_tx_stats()
         port1.grab_all_rx_stats()
+
         tx_stats = port0.dump_all_tx_stats()
         rx_stats = port1.dump_all_rx_stats()
 
+        txkey = tx_stats.keys()[0]
+        rxkey = rx_stats.keys()[0]
+
         result = {}
-        result['Tx Throughput fps'] = tx_stats['pt_stream_0'][1]
-        result['Rx Throughput fps'] = rx_stats['pr_tpldstraffic'][0][1]
-        result['Tx Throughput mbps'] = tx_stats['pt_stream_0'][0]
-        result['Rx Throughput mbps'] = rx_stats['pr_tpldstraffic'][0][0]
+        result['Tx Throughput fps'] = tx_stats[txkey]['pt_stream_0'][1]
+        result['Rx Throughput fps'] = rx_stats[rxkey]['pr_tpldstraffic'][0][1]
+        result['Tx Throughput mbps'] = tx_stats[txkey]['pt_stream_0'][0]
+        result['Rx Throughput mbps'] = rx_stats[rxkey]['pr_tpldstraffic'][0][0]
 
         # TODO: Find pot speed and % linerate out of it (based on framesize)
         #result['Tx Throughput % linerate'] = tx_stats[pt_stream_0][0]
         #result['Rx Throughput % linerate'] = rx_stats[pr_tpldstraffic][0][0]
 
         # ## TODO: Find naming convention for the following:
-        result['latency min'] = rx_stats['pr_tpldlatency'][0][0]
-        result['latency max'] = rx_stats['pr_tpldlatency'][0][2]
-        result['latency avg'] = rx_stats['pr_tpldlatency'][0][1]
+        result['latency min'] = rx_stats[rxkey]['pr_tpldlatency'][0][0]
+        result['latency max'] = rx_stats[rxkey]['pr_tpldlatency'][0][2]
+        result['latency avg'] = rx_stats[rxkey]['pr_tpldlatency'][0][1]
 
         return result
 
@@ -294,6 +345,13 @@ class Xena(object):
         Start transmission and immediately return. Do not wait for
         results.
         """
+
+        self._params = {}
+        self._params['traffic'] = self.traffic_defaults.copy()
+        if traffic:
+            self._params['traffic'] = merge_spec(
+                    self._params['traffic'], traffic)
+
         if self.xm == None:
             self.connect()
 
@@ -331,9 +389,16 @@ class Xena(object):
         port0.stop_traffic()
 
         # TODO, need a return here of the results per spec -CT
+        # TODO Although I'm not sure what results they want??
 
     def send_rfc2544_throughput(self, traffic=None, trials=1, duration=20,
                                 lossrate=0.0):
+
+        self._params = {}
+        self._params['traffic'] = self.traffic_defaults.copy()
+        if traffic:
+            self._params['traffic'] = merge_spec(
+                    self._params['traffic'], traffic)
 
         # Read configuration file to variable
         with open('./Configuration.x2544','r',encoding='utf-8') as data_file:
@@ -392,6 +457,13 @@ class Xena(object):
         Start transmission and immediately return. Do not wait for
         results.
         """
+
+        self._params = {}
+        self._params['traffic'] = self.traffic_defaults.copy()
+        if traffic:
+            self._params['traffic'] = merge_spec(
+                    self._params['traffic'], traffic)
+
         # Read configuration file to variable
         with open('./Configuration.x2544','r',encoding='utf-8') as data_file:
             x2544_Configuration = json.loads(data_file.read())
@@ -465,6 +537,13 @@ class Xena(object):
             Back to Back Count (frames), Frame Loss (frames), Frame Loss (%)
         :rtype: :class:`Back2BackResult`
         """
+
+        self._params = {}
+        self._params['traffic'] = self.traffic_defaults.copy()
+        if traffic:
+            self._params['traffic'] = merge_spec(
+                    self._params['traffic'], traffic)
+
         raise NotImplementedError('Please call an implementation.')
 
     def start_rfc2544_back2back(self, traffic=None, trials=1, duration=20,
@@ -474,6 +553,13 @@ class Xena(object):
         Start transmission and immediately return. Do not wait for
         results.
         """
+
+        self._params = {}
+        self._params['traffic'] = self.traffic_defaults.copy()
+        if traffic:
+            self._params['traffic'] = merge_spec(
+                    self._params['traffic'], traffic)
+
         raise NotImplementedError('Please call an implementation.')
 
     def wait_rfc2544_back2back(self):
@@ -483,8 +569,45 @@ class Xena(object):
 
 
 if __name__ == "__main__":
-    result = {}
+    # XenaPythonLib logging
+    debugOn = False
+    for debugs in sys.argv:
+        if debugs in ['debug', '-d', 'Debug', '-D']:
+            debugOn = True
+    logging.basicConfig(level=logging.DEBUG) if debugOn else \
+        logging.basicConfig(level=logging.INFO)
+
+    result = dict()
     xena_obj = Xena()
-    result = xena_obj.send_rfc2544_throughput()
+    print("What method to test?")
+    print("1. send_rfc2544_throughput")
+    print("2. send_burst_traffic")
+    print("3. send_cont_traffic/stop_cont_traffic")
+    print("4. Quit")
+    ans = 0
+    while ans not in ('1', '2', '3', '4'):
+        if sys.version[0] == '3':
+            print("Version 3")
+            ans = input("> ")
+        else:
+            print("Version 2")
+            ans = raw_input("> ")
+        try:
+            if int(ans) > 0 and int(ans) < 5:
+                break
+            else:
+                print("!!Invalid entry!!")
+        except TypeError:
+            print("!!Invalid entry!!")
+    if ans == '1':
+        result = xena_obj.send_rfc2544_throughput()
+    if ans == '2':
+        result = xena_obj.send_burst_traffic()
+    if ans == '3':
+        xena_obj.send_cont_traffic()
+        Time.sleep(5)
+        xena_obj.stop_cont_traffic()
+    if ans == '4':
+        sys.exit(0)
     for key in result.keys():
         print(key, result[key])

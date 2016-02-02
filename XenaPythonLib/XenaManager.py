@@ -18,7 +18,7 @@ class XenaManager:
             sys.exit(-1)
 
         self.set_owner(owner)
-        self.keep_alive_thread = KeepAliveThread.KeepAliveThread(self.xsocket)
+        self.keep_alive_thread = KeepAliveThread(self.xsocket)
         self.keep_alive_thread.start()
 
     def __del__(self):
@@ -54,7 +54,7 @@ class XenaManager:
             logging.error("XenaManager: adding duplicated port")
             return
 
-        port_new = XenaPort.XenaPort(self.xsocket, module, port)
+        port_new = XenaPort(self.xsocket, module, port)
         if not port_new.reserve():
             del port_new
             return None

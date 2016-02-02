@@ -442,7 +442,7 @@ class XenaPort:
             return
 
         if self.__sendCommand('ps_create [%s]' % sid):
-            stream_new = XenaStream.XenaStream(self.xsocket, self, sid)
+            stream_new = XenaStream(self.xsocket, self, sid)
             self.streams[sid] = stream_new
             return stream_new
 

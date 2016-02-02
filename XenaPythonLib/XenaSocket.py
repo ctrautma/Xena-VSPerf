@@ -11,7 +11,7 @@ class XenaSocket:
 
     def __init__(self, hostname, port = 22611, timeout = 5):
         logging.debug("XenaSocket: initializing")
-        self.xsocket = BaseSocket.BaseSocket(hostname, port, timeout)
+        self.xsocket = BaseSocket(hostname, port, timeout)
         self.access_semaphor = threading.Semaphore(1)
 
     def set_dummymode(self, enable = True):

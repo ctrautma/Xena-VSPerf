@@ -2,9 +2,9 @@ import socket
 import sys
 import logging
 
-class BaseSocket:
+class BaseSocket(object):
 
-    def __init__(self, hostname, port = 5025, timeout = 5):
+    def __init__(self, hostname, port = 22606, timeout = 5):
         self.hostname = hostname
         self.port = port
         self.timeout = timeout
@@ -70,7 +70,7 @@ class BaseSocket:
         try:
             if not self.sock.send(cmd + '\n'):
                 return -1
-        except (socket.error, msg):
+        except socket.error as msg:
             logging.error("Fail to send a cmd, error:%s\n", msg[0])
             self.disconnect()
             return -1
