@@ -202,15 +202,15 @@ class Xena(object):
 
         # setup stream params
         if not all([
-            s1_p0.set_packet_header(self._build_test_packet()),
-            s1_p0.set_packet_length_fixed(TRAFFIC_DEFAULTS['l2']['framesize'],
-                                      16383),
-            s1_p0.set_packet_payload_incrementing('0x00'),
-            s1_p0.set_packet_limit(numpkts),
-            s1_p0.set_rate_fraction(framerate*10000),
-            s1_p0.set_test_payload_id(0)]):
-            print("Error setting up stream settings. Check config and retry")
-            sys.exit(1)
+             s1_p0.set_packet_header(self._build_test_packet()),
+             s1_p0.set_packet_length_fixed(TRAFFIC_DEFAULTS['l2']['framesize'],
+                                       16383),
+             s1_p0.set_packet_payload_incrementing('0x00'),
+             s1_p0.set_packet_limit(numpkts),
+             s1_p0.set_rate_fraction(framerate*10000),
+             s1_p0.set_test_payload_id(0)]):
+             print("Error setting up stream settings. Check config and retry")
+             sys.exit(1)
 
         port0.clear_all_tx_stats()
         port0.clear_all_rx_stats()
@@ -296,7 +296,7 @@ class Xena(object):
                                       16383)
         s1_p0.set_packet_payload_incrementing('0x00')
 
-        s1_p0.set_packet_limit(numpkts)
+        s1_p0.set_packet_limit(numpkts) # TODO why when we disable this above? -CT
         s1_p0.set_test_payload_id(0)
 
         # TODO this command doesn't work? XenaStream doesn't have this method -CT
