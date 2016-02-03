@@ -19,8 +19,8 @@ Xena Traffic Generator Model
 # be ready.
 
 # TODO CT List of things that need to be completed
-# 1. Fix Result dictionaries so they work, currently the lookups into the
-#    dictionaries are failing on keys
+# 1. Fix results to trafficgen guide standard of result_constants.py in
+# core/results/result_constants.py
 # 2. Numpkts in params should be moved to config file
 # 3. Flavios libraries not python3 compatible. Either write another driver or
 #    find another solution
@@ -382,11 +382,12 @@ class Xena(object):
                                       16383)
         s1_p0.set_packet_payload_incrementing('0x00')
 
-        s1_p0.set_tx_time_limit_ms(time*1000)
+        # This is a non blocking traffic start. Why are we setting a limit? CT
+        # s1_p0.set_tx_time_limit_ms(time*1000)
 
         s1_p0.set_test_payload_id(0)
 
-        # start the traffic and wait(time)
+        # start the traffic and return
         port0.start_traffic()
 
     def stop_cont_traffic(self):
