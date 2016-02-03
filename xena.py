@@ -234,13 +234,14 @@ class Xena(object):
         txkey = tx_stats.keys()[0]
         rxkey = rx_stats.keys()[0]
 
+        # TODO implement multiple stream stats.
         result = {}
         result['framesSent'] = tx_stats[txkey]['pt_stream_1']['packets']
-        result['framesRecv'] = rx_stats[rxkey]['pr_tpldstraffic'][0][3]
+        result['framesRecv'] = rx_stats[rxkey]['pr_tpldstraffic']['0']['packets']
         result['bytesSent'] = tx_stats[txkey]['pt_stream_1']['bytes']
-        result['bytesRecv'] = rx_stats[rxkey]['pr_tpldstraffic'][0][2]
-        result['payError'] = rx_stats[rxkey]['pr_tplderrors'][0][2]
-        result['seqError'] = rx_stats[rxkey]['pr_tplderrors'][0][0]
+        result['bytesRecv'] = rx_stats[rxkey]['pr_tpldstraffic']['0']['bytes']
+        result['payError'] = rx_stats[rxkey]['pr_tplderrors']['0']['pld']
+        result['seqError'] = rx_stats[rxkey]['pr_tplderrors']['0']['seq']
 
         return result
 
@@ -297,11 +298,11 @@ class Xena(object):
                                       16383)
         s1_p0.set_packet_payload_incrementing('0x00')
 
-        s1_p0.set_packet_limit(numpkts)
+        # CT Is this really needed since we set the automatic stop below?
+        # s1_p0.set_packet_limit(numpkts)
         s1_p0.set_test_payload_id(0)
 
-        # TODO this command doesn't work? XenaStream doesn't have this method -CT
-        #s1_p0.set_tx_time_limit_ms(time*1000) #automatic stop
+        port0.set_tx_time_limit_ms(time*1000) #automatic stop
 
         # TODO CT is this ok to clear these again?
         port0.clear_all_tx_stats()
@@ -320,24 +321,29 @@ class Xena(object):
         tx_stats = port0.dump_all_tx_stats()
         rx_stats = port1.dump_all_rx_stats()
 
+        print(tx_stats)
+        print(rx_stats)
+
         txkey = tx_stats.keys()[0]
         rxkey = rx_stats.keys()[0]
 
+        # TODO need to implement multistream stat collection CT
         result = {}
-        result['Tx Throughput fps'] = tx_stats[txkey]['pt_stream_0'][1]
-        result['Rx Throughput fps'] = rx_stats[rxkey]['pr_tpldstraffic'][0][1]
-        result['Tx Throughput mbps'] = tx_stats[txkey]['pt_stream_0'][0]
-        result['Rx Throughput mbps'] = rx_stats[rxkey]['pr_tpldstraffic'][0][0]
+        result['Tx Throughput fps'] = tx_stats[txkey]['pt_stream_1']['pps']
+        result['Rx Throughput fps'] = rx_stats[rxkey]['pr_tpldstraffic']['0']['pps']
+        result['Tx Throughput mbps'] = tx_stats[txkey]['pt_stream_1']['bps'] * 1000
+        result['Rx Throughput mbps'] = rx_stats[rxkey]['pr_tpldstraffic']['0']['bps'] * 1000
 
-        # TODO: Find pot speed and % linerate out of it (based on framesize)
+        # TODO: Find port speed and % linerate out of it (based on framesize)
         #result['Tx Throughput % linerate'] = tx_stats[pt_stream_0][0]
         #result['Rx Throughput % linerate'] = rx_stats[pr_tpldstraffic][0][0]
 
         # ## TODO: Find naming convention for the following:
-        result['latency min'] = rx_stats[rxkey]['pr_tpldlatency'][0][0]
-        result['latency max'] = rx_stats[rxkey]['pr_tpldlatency'][0][2]
-        result['latency avg'] = rx_stats[rxkey]['pr_tpldlatency'][0][1]
+        result['latency min'] = rx_stats[rxkey]['pr_tpldlatency']['0']['min']
+        result['latency max'] = rx_stats[rxkey]['pr_tpldlatency']['0']['max']
+        result['latency avg'] = rx_stats[rxkey]['pr_tpldlatency']['0']['avg']
 
+        print(result)
         return result
 
     def start_cont_traffic(self, traffic=None, time=20, framerate=0):

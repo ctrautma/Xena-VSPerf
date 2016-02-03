@@ -23,15 +23,15 @@ CMD_PREFIX = 'gencmd : '
 TRAFFIC_DEFAULTS = {
     'l2': {
         'framesize': 64,
-        'srcmac': '00:00:00:00:00:00',
-        'dstmac': '00:00:00:00:00:00',
+        'srcmac': '52:54:00:C6:10:10',
+        'dstmac': '52:54:00:C6:10:20',
         'srcport': 3000,
         'dstport': 3001,
     },
     'l3': {
         'proto': 'udp',
-        'srcip': '1.1.1.1',
-        'dstip': '90.90.90.90',
+        'srcip': '192.168.0.5',
+        'dstip': '192.168.0.6',
     },
     'vlan': {
         'enabled': False,
