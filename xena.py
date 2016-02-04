@@ -25,6 +25,7 @@ Xena Traffic Generator Model
 # 3. Flavios libraries not python3 compatible. Either write another driver or
 #    find another solution
 # 4. Move port, ip, logon name to config file per traffic gen spec
+# 5. Integrate traffic param spec from traffic defaults with merge
 
 # VSPerf imports
 from trafficgenhelper import TRAFFIC_DEFAULTS, merge_spec
