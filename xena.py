@@ -41,9 +41,8 @@ import sys
 import time as Time
 import xml.etree.ElementTree as ET
 
-# XenaPythonLib imports
-from XenaPythonLib.XenaManager import XenaManager
-from XenaPythonLib.XenaSocket import XenaSocket
+# XenaDriver
+import XenaDriver
 
 # scapy imports
 # pip install scapy to install on python 2.x
@@ -131,13 +130,9 @@ class Xena(object):
 
         :returns: None
         """
-        self._xsocket = XenaSocket(TRAFFICGEN_IP)
-        if not self._xsocket.connect():
-            self._logger.debug("Error connecting to Xena IP {}".format(TRAFFICGEN_IP))
-            sys.exit(-1)
-
+        self._xsocket = XenaDriver.XenaSocketDriver(TRAFFICGEN_IP)
         # create the manager session
-        self.xm = XenaManager(self._xsocket, TRAFFICGEN_USER)
+        self.xm = XenaDriver.XenaManager(self._xsocket, 'xena')
 
     def disconnect(self):
         """Disconnect from the traffic generator.
@@ -181,61 +176,60 @@ class Xena(object):
         if not self.xm:
             self.connect()
 
-        port0 = self.xm.add_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
+        port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
         if not port0:
             self._logger.debug("Fail to add port " + str(TRAFFICGEN_PORT1))
             sys.exit(-1)
 
-        port1 = self.xm.add_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
+        port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
         if not port1:
             self._logger.debug("Fail to add port" + str(TRAFFICGEN_PORT2))
             sys.exit(-1)
 
         # Clear port configuration for a clean start
-        port0.reset()
-        port1.reset()
+        port0.reset_port()
+        port1.reset_port()
+
+        port0.reserve_port()
+        port1.reserve_port()
 
         # Add one stream for port 0
-        s1_p0 = port0.add_stream(1)
-        s1_p0.set_stream_on()
+        s1_p0 = port0.add_stream()
+        s1_p0.set_on()
 
         # setup stream params
         s1_p0.set_packet_header(self._build_test_packet())
-        s1_p0.set_packet_length_fixed(
+        s1_p0.set_packet_length('fixed',
                 TRAFFIC_DEFAULTS['l2']['framesize'], 16383)
-        s1_p0.set_packet_payload_incrementing('0x00')
+        s1_p0.set_packet_payload('incrementing', '0x00')
         s1_p0.set_packet_limit(numpkts)
         s1_p0.set_rate_fraction(framerate*10000),
-        s1_p0.set_test_payload_id(0)
+        s1_p0.set_payload_id(0)
 
-        port0.clear_all_tx_stats()
-        port0.clear_all_rx_stats()
-        port1.clear_all_tx_stats()
-        port1.clear_all_rx_stats()
+        port0.clear_stats()
+        port1.clear_stats()
 
         # start/[wait]/stop the traffic
-        if not port0.start_traffic():
+        if not port0.traffic_on():
             self._logger.debug(
                     "Failure to start traffic. Check settings and retry.")
             sys.exit(1)
         Time.sleep(time)
-        port0.stop_traffic()
+        port0.traffic_off()
 
         # getting results
-        port0.grab_all_tx_stats()
-        port1.grab_all_rx_stats()
-        tx_stats = port0.dump_all_tx_stats()
-        rx_stats = port1.dump_all_rx_stats()
+        tx_stats = port0.get_tx_stats().data
+        rx_stats = port1.get_rx_stats().data
 
         txkey = tx_stats.keys()[0]
         rxkey = rx_stats.keys()[0]
 
         # TODO implement multiple stream stats.
         result = dict()
-        result['framesSent'] = tx_stats[txkey]['pt_stream_1']['packets']
+        result['framesSent'] = tx_stats[txkey]['pt_stream_0']['packets']
         result['framesRecv'] = rx_stats[
             rxkey]['pr_tpldstraffic']['0']['packets']
-        result['bytesSent'] = tx_stats[txkey]['pt_stream_1']['bytes']
+        result['bytesSent'] = tx_stats[txkey]['pt_stream_0']['bytes']
         result['bytesRecv'] = rx_stats[rxkey]['pr_tpldstraffic']['0']['bytes']
         result['payError'] = rx_stats[rxkey]['pr_tplderrors']['0']['pld']
         result['seqError'] = rx_stats[rxkey]['pr_tplderrors']['0']['seq']
@@ -276,48 +270,43 @@ class Xena(object):
         if self.xm == None:
             self.connect()
 
-        port0 = self.xm.add_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
+        port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
         if not port0:
             self._logger.debug("Fail to add port " + str(TRAFFICGEN_PORT1))
             sys.exit(-1)
 
-        port1 = self.xm.add_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
+        port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
         if not port1:
             self._logger.debug("Fail to add port" + str(TRAFFICGEN_PORT2))
             sys.exit(-1)
 
-        s1_p0 = port0.add_stream(1)
-        s1_p0.set_stream_on()
-        s1_p0.disable_packet_limit()  # for continuous flow
+        s1_p0 = port0.add_stream()
+        s1_p0.set_on()
+        s1_p0.set_packet_limit(-1)  # for continuous flow
 
-        s1_p0.set_rate_fraction()
+        s1_p0.set_rate_fraction(1000000)
         s1_p0.set_packet_header(self._build_test_packet())
-        s1_p0.set_packet_length_fixed(TRAFFIC_DEFAULTS['l2']['framesize'],
+        s1_p0.set_packet_length('fixed', TRAFFIC_DEFAULTS['l2']['framesize'],
                                       16383)
-        s1_p0.set_packet_payload_incrementing('0x00')
+        s1_p0.set_packet_payload('incrementing', '0x00')
 
         # CT Is this really needed since we set the automatic stop below?
         # s1_p0.set_packet_limit(numpkts)
-        s1_p0.set_test_payload_id(0)
+        s1_p0.set_payload_id(0)
 
-        port0.set_tx_time_limit_ms(time*1000)  # automatic stop
+        port0.set_port_time_limit(time*1000)  # automatic stop
 
         # TODO CT is this ok to clear these again?
-        port0.clear_all_tx_stats()
-        port0.clear_all_rx_stats()
-        port1.clear_all_tx_stats()
-        port1.clear_all_rx_stats()
+        port0.clear_stats()
+        port1.clear_stats()
 
         # start the traffic
-        port0.start_traffic()
+        port0.traffic_on()
         Time.sleep(time)
 
         # getting results
-        port0.grab_all_tx_stats()
-        port1.grab_all_rx_stats()
-
-        tx_stats = port0.dump_all_tx_stats()
-        rx_stats = port1.dump_all_rx_stats()
+        tx_stats = port0.get_tx_stats().data
+        rx_stats = port1.get_rx_stats().data
 
         print(tx_stats)
         print(rx_stats)
@@ -327,9 +316,9 @@ class Xena(object):
 
         # TODO need to implement multistream stat collection CT
         result = {}
-        result['Tx Throughput fps'] = tx_stats[txkey]['pt_stream_1']['pps']
+        result['Tx Throughput fps'] = tx_stats[txkey]['pt_stream_0']['pps']
         result['Rx Throughput fps'] = rx_stats[rxkey]['pr_tpldstraffic']['0']['pps']
-        result['Tx Throughput mbps'] = tx_stats[txkey]['pt_stream_1']['bps'] * 1000
+        result['Tx Throughput mbps'] = tx_stats[txkey]['pt_stream_0']['bps'] * 1000
         result['Rx Throughput mbps'] = rx_stats[rxkey]['pr_tpldstraffic']['0']['bps'] * 1000
 
         # TODO: Find port speed and % linerate out of it (based on framesize)
@@ -371,28 +360,28 @@ class Xena(object):
             sys.exit(-1)
 
         s1_p0 = port0.add_stream(1)
-        s1_p0.set_stream_on()
-        s1_p0.disable_packet_limit()  # for continues flow
+        s1_p0.set_on()
+        s1_p0.set_packet_limit(-1)  # for continues flow
 
         s1_p0.set_rate_fraction()
         s1_p0.set_packet_header(self._build_test_packet())
-        s1_p0.set_packet_length_fixed(TRAFFIC_DEFAULTS['l2']['framesize'],
-                                      16383)
-        s1_p0.set_packet_payload_incrementing('0x00')
+        s1_p0.set_packet_length('fixed', TRAFFIC_DEFAULTS['l2']['framesize'],
+                                16383)
+        s1_p0.set_packet_payload('incrementing', '0x00')
 
         # This is a non blocking traffic start. Why are we setting a limit? CT
         # s1_p0.set_tx_time_limit_ms(time*1000)
 
-        s1_p0.set_test_payload_id(0)
+        s1_p0.set_payload_id(0)
 
         # start the traffic and return
-        port0.start_traffic()
+        port0.traffic_on()
 
     def stop_cont_traffic(self):
         """Stop continuous transmission and return results.
         """
-        port0 = self.xm.get_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
-        port0.stop_traffic()
+        port0 = self.xm.get_module_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
+        port0.traffic_off()
 
         # TODO, need a return here of the results per spec -CT
         # TODO Although I'm not sure what results they want??
