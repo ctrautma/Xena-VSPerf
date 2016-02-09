@@ -219,6 +219,7 @@ class XenaSocketDriver(SimpleSocket):
         replies = []
         self.access_semaphor.acquire()
         msg = SimpleSocket.read_reply(self).decode('utf-8')
+        msgleft = ''
         while True:
             if '\n' in msg:
                 (reply, msgleft) = msg.split('\n', 1)
@@ -241,18 +242,18 @@ class XenaSocketDriver(SimpleSocket):
 
 
 class XenaManager(object):
-    def __init__(self, driver, password='xena'):
+    def __init__(self, socketDriver, password='xena'):
         """Constructor
 
         Establish a connection to Xena using a ``driver`` with the ``password``
         supplied.
 
         Attributes:
-        :param driver: XenaSocketDriver connection object
+        :param socketDriver: XenaSocketDriver connection object
         :param password: Password to the Xena traffic generator
         :returns: XenaManager object
         """
-        self.driver = driver
+        self.driver = socketDriver
         self.ports = list()
 
         if self.logon(password):
@@ -271,7 +272,7 @@ class XenaManager(object):
         """ De-constructor
         """
         for module_port in self.ports:
-            self.release(module_port)
+            module_port.release_port()
         self.ports = []
         self.keep_alive_thread.stop()
         self.driver.ask_verify(CMD_LOGOFF)
@@ -407,6 +408,13 @@ class XenaPort(object):
         txData = self._manager.driver.send_query_replies(command)
         data = XenaTXStats(txData, time.time())
         return data
+
+    def release_port(self):
+        """Release the port
+        :return: Boolean True is response OK, False if error.
+        """
+        command = make_port_command(CMD_RELEASE, self)
+        return self._manager.driver.ask_verify(command)
 
     def reserve_port(self):
         """Reserve the port
@@ -712,7 +720,7 @@ class XenaTXStats(object):
 
     def _pack_stats(self, params, start, fields=None):
         """ Pack up the list of stats in a dictionary
-        :param param: The list of params to process
+        :param params: The list of params to process
         :param start: What element to start at
         :param fields: The field names to pack as keys
         :return: Dictionary of data where fields match up to the params
@@ -729,7 +737,7 @@ class XenaTXStats(object):
 
     def _pack_txextra_stats(self, params, start):
         """ Pack up the tx extra stats
-        :param param: List of params to pack
+        :param params: List of params to pack
         :param start: What element to start at
         :return: Dictionary of stats
         """
@@ -799,7 +807,6 @@ def make_stream_command(cmd, args, xenaStream):
 
 
 if __name__ == '__main__':
-    import time
     driver = XenaSocketDriver('10.19.15.19')
     xm = XenaManager(driver)
     port0 = xm.add_module_port(3, 0)
