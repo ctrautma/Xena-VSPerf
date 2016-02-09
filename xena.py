@@ -38,6 +38,8 @@ import subprocess
 import sys
 import time as Time
 import xml.etree.ElementTree as ET
+from collections import OrderedDict
+from core.results.results_constants import ResultsConstants
 
 # XenaDriver
 import XenaDriver
@@ -223,8 +225,22 @@ class Xena(object):
         rxkey = rx_stats.keys()[0]
 
         # TODO implement multiple stream stats.
-        result = dict()
-        result['framesSent'] = tx_stats[txkey]['pt_stream_0']['packets']
+      
+	result_dict = OrderedDict()
+        
+	result_dict[ResultsConstants.TX_FRAMES] = tx_stats[txkey]['pt_stream_0']['packets']
+        result_dict[ResultsConstants.RX_FRAMES] = rx_stats[
+            rxkey]['pr_tpldstraffic']['0']['packets']
+        result_dict[ResultsConstants.TX_BYTES] = tx_stats[txkey]['pt_stream_0']['bytes']
+        result_dict[ResultsConstants.RX_BYTES] = rx_stats[rxkey]['pr_tpldstraffic']['0']['bytes']
+        result_dict[ResultsConstants.PAYLOAD_ERR] = rx_stats[rxkey]['pr_tplderrors']['0']['pld']
+        result_dict[ResultsConstants.SEQ_ERR] = rx_stats[rxkey]['pr_tplderrors']['0']['seq']
+        
+	return result_dict
+
+	"""
+	result = {}
+	result['framesSent'] = tx_stats[txkey]['pt_stream_0']['packets']
         result['framesRecv'] = rx_stats[
             rxkey]['pr_tpldstraffic']['0']['packets']
         result['bytesSent'] = tx_stats[txkey]['pt_stream_0']['bytes']
@@ -232,8 +248,8 @@ class Xena(object):
         result['payError'] = rx_stats[rxkey]['pr_tplderrors']['0']['pld']
         result['seqError'] = rx_stats[rxkey]['pr_tplderrors']['0']['seq']
 
-        return result
-
+	return result
+	"""
     def send_cont_traffic(self, traffic=None, numpkts=100, time=20,
                           framerate=0):
         """Send a continuous flow of traffic.r
@@ -313,7 +329,8 @@ class Xena(object):
         rxkey = rx_stats.keys()[0]
 
         # TODO need to implement multistream stat collection CT
-        result = {}
+        """
+	result = {}
         result['Tx Throughput fps'] = tx_stats[txkey]['pt_stream_0']['pps']
         result['Rx Throughput fps'] = rx_stats[rxkey]['pr_tpldstraffic']['0']['pps']
         result['Tx Throughput mbps'] = tx_stats[txkey]['pt_stream_0']['bps'] * 1000
@@ -330,6 +347,24 @@ class Xena(object):
 
         print(result)
         return result
+	"""
+	result_dict = OrderedDict()
+ 
+	result_dict[ResultsConstants.TX_RATE_FPS] = tx_stats[txkey]['pt_stream_0']['pps']
+        result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = rx_stats[rxkey]['pr_tpldstraffic']['0']['pps']
+        result_dict[ResultsConstants.TX_RATE_MBPS] = tx_stats[txkey]['pt_stream_0']['bps'] * 1000
+        result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = rx_stats[rxkey]['pr_tpldstraffic']['0']['bps'] * 1000
+
+        # TODO: Find port speed and % linerate out of it (based on framesize)
+        # result['Tx Throughput % linerate'] = tx_stats[pt_stream_0][0]
+        # result['Rx Throughput % linerate'] = rx_stats[pr_tpldstraffic][0][0]
+
+        # ## TODO: Find naming convention for the following:
+        result_dict[ResultsConstants.MIN_LATENCY_NS] = rx_stats[rxkey]['pr_tpldlatency']['0']['min']
+        result_dict[ResultsConstants.MAX_LATENCY_NS] = rx_stats[rxkey]['pr_tpldlatency']['0']['max']
+        result_dict[ResultsConstants.AVG_LATENCY_NS] = rx_stats[rxkey]['pr_tpldlatency']['0']['avg']
+
+	return result_dict
 
     def start_cont_traffic(self, traffic=None, time=20, framerate=0):
         """Non-blocking version of 'send_cont_traffic'.
@@ -424,25 +459,10 @@ class Xena(object):
         args=["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e"]
         subprocess.call(args)
 
-        # result_dict = OrderedDict()
-        result_dict = {}
         root = ET.parse(r'{}/{}/xena2544-report.xml'.format(
                 os.path.expanduser('~'), 'Xena/Xena2544-2G/Reports')).getroot()
 
-        result_dict['THROUGHPUT_TX_FPS'] = root[0][1][0].get('TotalTxRateFps')
-        result_dict['THROUGHPUT_TX_MBPS'] = int(root[0][1][0].get(
-                'TotalTxRateBpsL2'))/1000
-        result_dict['THROUGHPUT_TX_PERCENT'] = root[0][1][0].get(
-                'TotalTxRatePcnt')
-        result_dict['THROUGHPUT_RX_PERCENT'] = (100 - int(root[0][1][0].get(
-                'TotalLossRatioPcnt'))) * int(root[0][1][0].get(
-                    'TotalTxRatePcnt'))
-        # This is done for port 0. We can change last 0 to 1 to get port 1
-        # results,
-        result_dict['MIN_LATENCY_NS'] = root[0][1][0][0].get('MinLatency')
-        result_dict['MAX_LATENCY_NS'] = root[0][1][0][0].get('MaxLatency')
-        result_dict['AVG_LATENCY_NS'] = root[0][1][0][0].get('AvgLatency')
-        return result_dict
+	return Xena._create_throughput_result(root)
 
     def start_rfc2544_throughput(self, traffic=None, trials=3, duration=20,
                                  lossrate=0.0):
@@ -496,20 +516,30 @@ class Xena(object):
         result_dict = {}
         root = ET.parse(r'./xena2544-report.xml').getroot()
 
-        result_dict['THROUGHPUT_TX_FPS'] = root[0][1][0].get('TotalTxRateFps')
-        result_dict['THROUGHPUT_TX_MBPS'] = int(root[0][1][0].get(
-                'TotalTxRateBpsL2'))/1000
-        result_dict['THROUGHPUT_TX_PERCENT'] = root[0][1][0].get(
-                'TotalTxRatePcnt')
-        result_dict['THROUGHPUT_RX_PERCENT']  =  (100 - int(root[0][1][0].get(
+        return Xena._create_throughput_result(root)
+
+    def _create_throughput_result(root):
+        result_dict = OrderedDict()
+        
+	#result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = ?
+	#result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = ?
+        result_dict[ResultsConstants.THROUGHPUT_RX_PERCENT]  =  (100 - int(root[0][1][0].get(
                 'TotalLossRatioPcnt'))) * int(root[0][1][0].get(
                     'TotalTxRatePcnt'))
+
+	result_dict[ResultsConstants.TX_RATE_FPS] = root[0][1][0].get('TotalTxRateFps')
+        result_dict[ResultsConstants.TX_RATE_MBPS] = int(root[0][1][0].get(
+                'TotalTxRateBpsL2'))/1000
+	result_dict[ResultsConstants.TX_RATE_PERCENT] = root[0][1][0].get(
+                'TotalTxRatePcnt')
         # This is done for port 0. We can change last 0 to 1 to get port 1
         # results,
-        result_dict['MIN_LATENCY_NS'] = root[0][1][0][0].get('MinLatency')
-        result_dict['MAX_LATENCY_NS'] = root[0][1][0][0].get('MaxLatency')
-        result_dict['AVG_LATENCY_NS'] =  root[0][1][0][0].get('AvgLatency')
-        return result_dict
+        
+	result_dict[ResultsConstants.MIN_LATENCY_NS] = root[0][1][0][0].get('MinLatency')
+        result_dict[ResultsConstants.MAX_LATENCY_NS] = root[0][1][0][0].get('MaxLatency')
+        result_dict[ResultsConstants.AVG_LATENCY_NS] =  root[0][1][0][0].get('AvgLatency')
+        
+	return result_dict
 
     def send_rfc2544_back2back(self, traffic=None, trials=1, duration=20,
                                lossrate=0.0):
