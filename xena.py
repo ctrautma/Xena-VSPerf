@@ -145,7 +145,7 @@ class Xena(object):
         self._xsocket.disconnect()
 
     def send_burst_traffic(self, traffic=None, numpkts=100,
-                           time=20, framerate=100):
+                           duration=20, framerate=100):
         """Send a burst of traffic.
 
         Send a ``numpkts`` packets of traffic, using ``traffic``
@@ -155,7 +155,7 @@ class Xena(object):
         :param traffic: Detailed "traffic" spec, i.e. IP address, VLAN tags
         :param numpkts: Number of packets to send
         :param framerate: Expected framerate
-        :param time: Time to wait to receive packets
+        :param duration: Time to wait to receive packets
 
         :returns: dictionary of strings with following data:
             - List of Tx Frames,
@@ -212,7 +212,7 @@ class Xena(object):
             self._logger.debug(
                     "Failure to start traffic. Check settings and retry.")
             sys.exit(1)
-        Time.sleep(time)
+        Time.sleep(duration)
         port0.traffic_off()
 
         # getting results
@@ -235,7 +235,7 @@ class Xena(object):
 
         return result_dict
 
-    def send_cont_traffic(self, traffic=None, numpkts=100, time=20,
+    def send_cont_traffic(self, traffic=None, numpkts=100, duration=20,
                           framerate=0):
         """Send a continuous flow of traffic.r
 
@@ -243,7 +243,7 @@ class Xena(object):
         until timeout ``time`` occurs.
 
         :param traffic: Detailed "traffic" spec, i.e. IP address, VLAN tags
-        :param time: Time to wait to receive packets (secs)
+        :param duration: Time to wait to receive packets (secs)
         :param framerate: Expected framerate
         :param multistream: Enable multistream output by overriding the
                         UDP port number in ``traffic`` with values
@@ -293,7 +293,7 @@ class Xena(object):
         # s1_p0.set_packet_limit(numpkts)
         s1_p0.set_payload_id(0)
 
-        port0.set_port_time_limit(time*1000)  # automatic stop
+        port0.set_port_time_limit(duration*1000)  # automatic stop
 
         # TODO CT is this ok to clear these again?
         port0.clear_stats()
@@ -301,7 +301,7 @@ class Xena(object):
 
         # start the traffic
         port0.traffic_on()
-        Time.sleep(time)
+        Time.sleep(duration)
 
         # getting results
         tx_stats = port0.get_tx_stats().data
@@ -331,11 +331,14 @@ class Xena(object):
 
         return result_dict
 
-    def start_cont_traffic(self, traffic=None, time=20, framerate=0):
+    def start_cont_traffic(self, traffic=None, duration=20, framerate=0):
         """Non-blocking version of 'send_cont_traffic'.
 
         Start transmission and immediately return. Do not wait for
         results.
+        :param traffic: Detailed "traffic" spec, i.e. IP address, VLAN tags
+        :param duration: Time to wait to receive packets (secs)
+        :param framerate: Expected framerate
         """
 
         self._params = {}
@@ -434,6 +437,10 @@ class Xena(object):
 
         Start transmission and immediately return. Do not wait for
         results.
+        :param traffic: Detailed "traffic" spec, i.e. IP address, VLAN tags
+        :param trials: Number of trials to execute
+        :param duration: Per iteration duration
+        :param lossrate: Acceptable lossrate percentage
         """
 
         self._params = {}
@@ -463,7 +470,6 @@ class Xena(object):
         #        guid = '929c6cd5-c4fd-40a1-a27f-6ef4ed755289'
         #else:
         #    e9fa2efa-57e0-41f1-9a0c-b01d0e91925e
-
 
         # Write modified to the file that is expetedTo(2) Be(b) Used.
         with open("./2bUsed.x2544", 'w',encoding='utf-8') as f:
