@@ -22,6 +22,14 @@ Xena Traffic Generator Model
 # 1. Numpkts in params should be moved to config file
 # 2. Move port, ip, logon name to config file per traffic gen spec
 # 3. Integrate traffic param spec from traffic defaults with merge
+# 4. Need back to back implementation
+# 5. I don't really like having two implementations for generating traffic.
+# We have one way that uses the exe file, and another that uses the socket
+# api. This means we need to implement the traffic defaults into the xml
+# file for the exe file. Possible improvement down the road would be to
+# use the API instead of the exe file. This will make the code easier to
+# maintain. This is just an opinion and not a real TODO.
+# 6. Need to modify xml file for traffic defaults in exe implementation.
 
 # VSPerf imports
 from trafficgenhelper import TRAFFIC_DEFAULTS, merge_spec
@@ -72,6 +80,8 @@ class Xena(object):
         self.xm = None
         self._port0 = None
         self._port1 = None
+        self._params = {}
+        self._xsocket = None
 
     @property
     def traffic_defaults(self):
@@ -100,7 +110,8 @@ class Xena(object):
         """
         self.disconnect()
 
-    def _build_test_packet(self):
+    @staticmethod
+    def build_test_packet():
         """
         Build a packet header based on traffic profile using scapy external
         libraries.
@@ -117,6 +128,32 @@ class Xena(object):
         packet_hex = '0x' + binascii.hexlify(packet_bytes)
         return packet_hex
         # TODO VLANS needs to addressed as well.
+
+    @staticmethod
+    def _create_throughput_result(root):
+        """
+        :return:
+        """
+        result_dict = OrderedDict()
+        # TODO get these parameters
+        # result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = ?
+        # result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = ?
+        result_dict[ResultsConstants.THROUGHPUT_RX_PERCENT]  =  (100 - int(root[0][1][0].get(
+                'TotalLossRatioPcnt'))) * int(root[0][1][0].get(
+                    'TotalTxRatePcnt'))
+        result_dict[ResultsConstants.TX_RATE_FPS] = root[0][1][0].get('TotalTxRateFps')
+        result_dict[ResultsConstants.TX_RATE_MBPS] = int(root[0][1][0].get(
+                'TotalTxRateBpsL2'))/1000
+        result_dict[ResultsConstants.TX_RATE_PERCENT] = root[0][1][0].get(
+                'TotalTxRatePcnt')
+        # This is done for port 0. We can change last 0 to 1 to get port 1
+        # results,
+
+        result_dict[ResultsConstants.MIN_LATENCY_NS] = root[0][1][0][0].get('MinLatency')
+        result_dict[ResultsConstants.MAX_LATENCY_NS] = root[0][1][0][0].get('MaxLatency')
+        result_dict[ResultsConstants.AVG_LATENCY_NS] = root[0][1][0][0].get('AvgLatency')
+
+        return result_dict
 
     def connect(self):
         """Connect to the traffic generator.
@@ -167,7 +204,7 @@ class Xena(object):
             - Payload Errors and Sequence Errors.
         """
 
-        self._params = {}
+        self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
         if traffic:
             self._params['traffic'] = merge_spec(
@@ -176,12 +213,14 @@ class Xena(object):
         if not self.xm:
             self.connect()
 
-        self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
+        self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1,
+                                              TRAFFICGEN_PORT1)
         if not self._port0:
             self._logger.debug("Fail to add port " + str(TRAFFICGEN_PORT1))
             sys.exit(-1)
 
-        self._port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
+        self._port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2,
+                                              TRAFFICGEN_PORT2)
         if not self._port1:
             self._logger.debug("Fail to add port" + str(TRAFFICGEN_PORT2))
             sys.exit(-1)
@@ -198,9 +237,9 @@ class Xena(object):
         s1_p0.set_on()
 
         # setup stream params
-        s1_p0.set_packet_header(self._build_test_packet())
-        s1_p0.set_packet_length('fixed',
-                TRAFFIC_DEFAULTS['l2']['framesize'], 16383)
+        s1_p0.set_packet_header(self.build_test_packet())
+        s1_p0.set_packet_length(
+                'fixed', TRAFFIC_DEFAULTS['l2']['framesize'], 16383)
         s1_p0.set_packet_payload('incrementing', '0x00')
         s1_p0.set_packet_limit(numpkts)
         s1_p0.set_rate_fraction(framerate*10000),
@@ -266,14 +305,13 @@ class Xena(object):
             - Max Latency (ns),
             - Avg Latency (ns)
         """
-
-        self._params = {}
+        self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
         if traffic:
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
 
-        if self.xm == None:
+        if self.xm:
             self.connect()
 
         self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
@@ -291,7 +329,7 @@ class Xena(object):
         s1_p0.set_packet_limit(-1)  # for continuous flow
 
         s1_p0.set_rate_fraction(1000000)
-        s1_p0.set_packet_header(self._build_test_packet())
+        s1_p0.set_packet_header(self.build_test_packet())
         s1_p0.set_packet_length('fixed', TRAFFIC_DEFAULTS['l2']['framesize'],
                                       16383)
         s1_p0.set_packet_payload('incrementing', '0x00')
@@ -355,7 +393,7 @@ class Xena(object):
         :param framerate: Expected framerate
         """
 
-        self._params = {}
+        self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
         if traffic:
             self._params['traffic'] = merge_spec(
@@ -379,7 +417,7 @@ class Xena(object):
         s1_p0.set_packet_limit(-1)  # for continues flow
 
         s1_p0.set_rate_fraction()
-        s1_p0.set_packet_header(self._build_test_packet())
+        s1_p0.set_packet_header(self.build_test_packet())
         s1_p0.set_packet_length('fixed', TRAFFIC_DEFAULTS['l2']['framesize'],
                                 16383)
         s1_p0.set_packet_payload('incrementing', '0x00')
@@ -439,14 +477,14 @@ class Xena(object):
 
         # TODO Need to implement trials CT
 
-        self._params = {}
+        self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
         if traffic:
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
 
         # Read configuration file to variable
-        with open('./Configuration.x2544','r',encoding='utf-8') as data_file:
+        with open('./Configuration.x2544', 'r', encoding='utf-8') as data_file:
             x2544_Configuration = json.loads(data_file.read())
 
         x2544_Configuration['TestOptions']['TestTypeOptionMap']['Throughput'][
@@ -468,7 +506,7 @@ class Xena(object):
         # else:
         #    e9fa2efa-57e0-41f1-9a0c-b01d0e91925e
 
-        # Write modified to the file that is expetedTo(2) Be(b) Used.
+        # Write modified to the file that is expectedTo(2) Be(b) Used.
         with open("./2bUsed.x2544", 'w',encoding='utf-8') as f:
             json.dump(x2544_Configuration, f, indent = 2,sort_keys = True,
                       ensure_ascii=True)
@@ -492,7 +530,7 @@ class Xena(object):
         :param lossrate: Acceptable lossrate percentage
         """
 
-        self._params = {}
+        self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
         if traffic:
             self._params['traffic'] = merge_spec(
@@ -537,31 +575,6 @@ class Xena(object):
 
         return Xena._create_throughput_result(root)
 
-    def _create_throughput_result(root):
-        """
-        :return:
-        """
-        result_dict = OrderedDict()
-        # TODO get these parameters
-        # result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = ?
-        # result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = ?
-        result_dict[ResultsConstants.THROUGHPUT_RX_PERCENT]  =  (100 - int(root[0][1][0].get(
-                'TotalLossRatioPcnt'))) * int(root[0][1][0].get(
-                    'TotalTxRatePcnt'))
-        result_dict[ResultsConstants.TX_RATE_FPS] = root[0][1][0].get('TotalTxRateFps')
-        result_dict[ResultsConstants.TX_RATE_MBPS] = int(root[0][1][0].get(
-                'TotalTxRateBpsL2'))/1000
-        result_dict[ResultsConstants.TX_RATE_PERCENT] = root[0][1][0].get(
-                'TotalTxRatePcnt')
-        # This is done for port 0. We can change last 0 to 1 to get port 1
-        # results,
-
-        result_dict[ResultsConstants.MIN_LATENCY_NS] = root[0][1][0][0].get('MinLatency')
-        result_dict[ResultsConstants.MAX_LATENCY_NS] = root[0][1][0][0].get('MaxLatency')
-        result_dict[ResultsConstants.AVG_LATENCY_NS] = root[0][1][0][0].get('AvgLatency')
-
-        return result_dict
-
     def send_rfc2544_back2back(self, traffic=None, trials=1, duration=20,
                                lossrate=0.0):
         """Send traffic per RFC2544 back2back test specifications.
@@ -584,7 +597,7 @@ class Xena(object):
         :rtype: :class:`Back2BackResult`
         """
 
-        self._params = {}
+        self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
         if traffic:
             self._params['traffic'] = merge_spec(
@@ -600,7 +613,7 @@ class Xena(object):
         results.
         """
 
-        self._params = {}
+        self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
         if traffic:
             self._params['traffic'] = merge_spec(
