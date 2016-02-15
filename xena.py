@@ -70,6 +70,8 @@ class Xena(object):
     def __init__(self):
         self.mono_pipe = None
         self.xm = None
+        self._port0 = None
+        self._port1 = None
 
     @property
     def traffic_defaults(self):
@@ -174,25 +176,25 @@ class Xena(object):
         if not self.xm:
             self.connect()
 
-        port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
-        if not port0:
+        self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
+        if not self._port0:
             self._logger.debug("Fail to add port " + str(TRAFFICGEN_PORT1))
             sys.exit(-1)
 
-        port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
-        if not port1:
+        self._port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
+        if not self._port1:
             self._logger.debug("Fail to add port" + str(TRAFFICGEN_PORT2))
             sys.exit(-1)
 
         # Clear port configuration for a clean start
-        port0.reset_port()
-        port1.reset_port()
+        self._port0.reset_port()
+        self._port1.reset_port()
 
-        port0.reserve_port()
-        port1.reserve_port()
+        self._port0.reserve_port()
+        self._port1.reserve_port()
 
         # Add one stream for port 0
-        s1_p0 = port0.add_stream()
+        s1_p0 = self._port0.add_stream()
         s1_p0.set_on()
 
         # setup stream params
@@ -204,20 +206,20 @@ class Xena(object):
         s1_p0.set_rate_fraction(framerate*10000),
         s1_p0.set_payload_id(0)
 
-        port0.clear_stats()
-        port1.clear_stats()
+        self._port0.clear_stats()
+        self._port1.clear_stats()
 
         # start/[wait]/stop the traffic
-        if not port0.traffic_on():
+        if not self._port0.traffic_on():
             self._logger.debug(
                     "Failure to start traffic. Check settings and retry.")
             sys.exit(1)
         Time.sleep(duration)
-        port0.traffic_off()
+        self._port0.traffic_off()
 
         # getting results
-        tx_stats = port0.get_tx_stats().data
-        rx_stats = port1.get_rx_stats().data
+        tx_stats = self._port0.get_tx_stats().data
+        rx_stats = self._port1.get_rx_stats().data
 
         txkey = tx_stats.keys()[0]
         rxkey = rx_stats.keys()[0]
@@ -225,13 +227,18 @@ class Xena(object):
         # TODO implement multiple stream stats.
         result_dict = OrderedDict()
 
-        result_dict[ResultsConstants.TX_FRAMES] = tx_stats[txkey]['pt_stream_0']['packets']
+        result_dict[ResultsConstants.TX_FRAMES] = tx_stats[txkey][
+            'pt_stream_0']['packets']
         result_dict[ResultsConstants.RX_FRAMES] = rx_stats[
             rxkey]['pr_tpldstraffic']['0']['packets']
-        result_dict[ResultsConstants.TX_BYTES] = tx_stats[txkey]['pt_stream_0']['bytes']
-        result_dict[ResultsConstants.RX_BYTES] = rx_stats[rxkey]['pr_tpldstraffic']['0']['bytes']
-        result_dict[ResultsConstants.PAYLOAD_ERR] = rx_stats[rxkey]['pr_tplderrors']['0']['pld']
-        result_dict[ResultsConstants.SEQ_ERR] = rx_stats[rxkey]['pr_tplderrors']['0']['seq']
+        result_dict[ResultsConstants.TX_BYTES] = tx_stats[txkey][
+            'pt_stream_0']['bytes']
+        result_dict[ResultsConstants.RX_BYTES] = rx_stats[rxkey][
+            'pr_tpldstraffic']['0']['bytes']
+        result_dict[ResultsConstants.PAYLOAD_ERR] = rx_stats[rxkey][
+            'pr_tplderrors']['0']['pld']
+        result_dict[ResultsConstants.SEQ_ERR] = rx_stats[rxkey][
+            'pr_tplderrors']['0']['seq']
 
         return result_dict
 
@@ -269,17 +276,17 @@ class Xena(object):
         if self.xm == None:
             self.connect()
 
-        port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
-        if not port0:
+        self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
+        if not self._port0:
             self._logger.debug("Fail to add port " + str(TRAFFICGEN_PORT1))
             sys.exit(-1)
 
-        port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
-        if not port1:
+        self._port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
+        if not self._port1:
             self._logger.debug("Fail to add port" + str(TRAFFICGEN_PORT2))
             sys.exit(-1)
 
-        s1_p0 = port0.add_stream()
+        s1_p0 = self._port0.add_stream()
         s1_p0.set_on()
         s1_p0.set_packet_limit(-1)  # for continuous flow
 
@@ -293,19 +300,19 @@ class Xena(object):
         # s1_p0.set_packet_limit(numpkts)
         s1_p0.set_payload_id(0)
 
-        port0.set_port_time_limit(duration*1000)  # automatic stop
+        self._port0.set_port_time_limit(duration*1000)  # automatic stop
 
         # TODO CT is this ok to clear these again?
-        port0.clear_stats()
-        port1.clear_stats()
+        self._port0.clear_stats()
+        self._port1.clear_stats()
 
         # start the traffic
-        port0.traffic_on()
+        self._port0.traffic_on()
         Time.sleep(duration)
 
         # getting results
-        tx_stats = port0.get_tx_stats().data
-        rx_stats = port1.get_rx_stats().data
+        tx_stats = self._port0.get_tx_stats().data
+        rx_stats = self._port1.get_rx_stats().data
 
         print(tx_stats)
         print(rx_stats)
@@ -316,18 +323,25 @@ class Xena(object):
         # TODO need to implement multistream stat collection CT
         result_dict = OrderedDict()
 
-        result_dict[ResultsConstants.TX_RATE_FPS] = tx_stats[txkey]['pt_stream_0']['pps']
-        result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = rx_stats[rxkey]['pr_tpldstraffic']['0']['pps']
-        result_dict[ResultsConstants.TX_RATE_MBPS] = tx_stats[txkey]['pt_stream_0']['bps'] * 1000
-        result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = rx_stats[rxkey]['pr_tpldstraffic']['0']['bps'] * 1000
+        result_dict[ResultsConstants.TX_RATE_FPS] = tx_stats[txkey][
+            'pt_stream_0']['pps']
+        result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = rx_stats[rxkey][
+            'pr_tpldstraffic']['0']['pps']
+        result_dict[ResultsConstants.TX_RATE_MBPS] = tx_stats[txkey][
+            'pt_stream_0']['bps'] * 1000
+        result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = rx_stats[rxkey][
+            'pr_tpldstraffic']['0']['bps'] * 1000
 
         # TODO: Find port speed and % linerate out of it (based on framesize)
         # result['Tx Throughput % linerate'] = tx_stats[pt_stream_0][0]
         # result['Rx Throughput % linerate'] = rx_stats[pr_tpldstraffic][0][0]
 
-        result_dict[ResultsConstants.MIN_LATENCY_NS] = rx_stats[rxkey]['pr_tpldlatency']['0']['min']
-        result_dict[ResultsConstants.MAX_LATENCY_NS] = rx_stats[rxkey]['pr_tpldlatency']['0']['max']
-        result_dict[ResultsConstants.AVG_LATENCY_NS] = rx_stats[rxkey]['pr_tpldlatency']['0']['avg']
+        result_dict[ResultsConstants.MIN_LATENCY_NS] = rx_stats[rxkey][
+            'pr_tpldlatency']['0']['min']
+        result_dict[ResultsConstants.MAX_LATENCY_NS] = rx_stats[rxkey][
+            'pr_tpldlatency']['0']['max']
+        result_dict[ResultsConstants.AVG_LATENCY_NS] = rx_stats[rxkey][
+            'pr_tpldlatency']['0']['avg']
 
         return result_dict
 
@@ -350,17 +364,17 @@ class Xena(object):
         if not self.xm:
             self.connect()
 
-        port0 = self.xm.add_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
-        if not port0:
+        self._port0 = self.xm.add_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
+        if not self._port0:
             self._logger.debug("Fail to add port " + str(TRAFFICGEN_PORT1))
             sys.exit(-1)
 
-        port1 = self.xm.add_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
-        if not port1:
+        self._port1 = self.xm.add_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
+        if not self._port1:
             self._logger.debug("Fail to add port" + str(TRAFFICGEN_PORT2))
             sys.exit(-1)
 
-        s1_p0 = port0.add_stream(1)
+        s1_p0 = self._port0.add_stream(1)
         s1_p0.set_on()
         s1_p0.set_packet_limit(-1)  # for continues flow
 
@@ -376,19 +390,54 @@ class Xena(object):
         s1_p0.set_payload_id(0)
 
         # start the traffic and return
-        port0.traffic_on()
+        self._port0.traffic_on()
 
     def stop_cont_traffic(self):
         """Stop continuous transmission and return results.
         """
-        port0 = self.xm.get_module_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
-        port0.traffic_off()
+        self._port0 = self.xm.get_module_port(TRAFFICGEN_MODULE1,
+                                              TRAFFICGEN_PORT1)
+        self._port0.traffic_off()
+
+        # getting results
+        tx_stats = self._port0.get_tx_stats().data
+        rx_stats = self._port1.get_rx_stats().data
+
+        txkey = tx_stats.keys()[0]
+        rxkey = rx_stats.keys()[0]
+
+        # TODO need to implement multistream stat collection CT
+        result_dict = OrderedDict()
+
+        result_dict[ResultsConstants.TX_RATE_FPS] = tx_stats[txkey][
+            'pt_stream_0']['pps']
+        result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = rx_stats[rxkey][
+            'pr_tpldstraffic']['0']['pps']
+        result_dict[ResultsConstants.TX_RATE_MBPS] = tx_stats[txkey][
+            'pt_stream_0']['bps'] * 1000
+        result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = rx_stats[rxkey][
+            'pr_tpldstraffic']['0']['bps'] * 1000
+
+        # TODO: Find port speed and % linerate out of it (based on framesize)
+        # result['Tx Throughput % linerate'] = tx_stats[pt_stream_0][0]
+        # result['Rx Throughput % linerate'] = rx_stats[pr_tpldstraffic][0][0]
+
+        result_dict[ResultsConstants.MIN_LATENCY_NS] = rx_stats[rxkey][
+            'pr_tpldlatency']['0']['min']
+        result_dict[ResultsConstants.MAX_LATENCY_NS] = rx_stats[rxkey][
+            'pr_tpldlatency']['0']['max']
+        result_dict[ResultsConstants.AVG_LATENCY_NS] = rx_stats[rxkey][
+            'pr_tpldlatency']['0']['avg']
+
+        return result_dict
 
         # TODO, need a return here of the results per spec -CT
         # TODO Although I'm not sure what results they want??
 
-    def send_rfc2544_throughput(self, traffic=None, trials=1, duration=20,
+    def send_rfc2544_throughput(self, traffic=None, trials=3, duration=20,
                                 lossrate=0.0):
+
+        # TODO Need to implement trials CT
 
         self._params = {}
         self._params['traffic'] = self.traffic_defaults.copy()
