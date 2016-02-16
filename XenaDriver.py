@@ -242,7 +242,7 @@ class XenaSocketDriver(SimpleSocket):
 
 
 class XenaManager(object):
-    def __init__(self, socketDriver, password='xena'):
+    def __init__(self, socketDriver, user='', password='xena'):
         """Constructor
 
         Establish a connection to Xena using a ``driver`` with the ``password``
@@ -263,7 +263,7 @@ class XenaManager(object):
                     self.driver.hostname))
             return
 
-        self.set_owner()
+        self.set_owner(user)
 
         self.keep_alive_thread = KeepAliveThread(self.driver)
         self.keep_alive_thread.start()
@@ -274,7 +274,7 @@ class XenaManager(object):
         for module_port in self.ports:
             module_port.release_port()
         self.ports = []
-        self.keep_alive_thread.stop()
+        # self.keep_alive_thread.stop()
         self.driver.ask_verify(CMD_LOGOFF)
         # del self.keep_alive_thread
 
@@ -312,11 +312,11 @@ class XenaManager(object):
         """
         return self.driver.ask_verify(make_manager_command(CMD_LOGIN, password))
 
-    def set_owner(self):
+    def set_owner(self, username):
         """Set the ports owner.
         :return: Boolean True is response OK, False if error.
         """
-        return self.driver.ask_verify(make_manager_command(CMD_OWNER, 'vsperf'))
+        return self.driver.ask_verify(make_manager_command(CMD_OWNER, username))
 
 
 class XenaPort(object):
@@ -634,6 +634,13 @@ class XenaRXStats(object):
         fields = ['min', 'avg', 'max', '1sec']
         return self._pack_stats(param, start, fields)
 
+    @property
+    def time(self):
+        """
+        :return: Time as String of epoc of when stats were collected
+        """
+        return self._time
+
     def parse_stats(self):
         """ Parse the stats from pr all command
         :return: Dictionary of all stats
@@ -716,6 +723,7 @@ class XenaTXStats(object):
         """
         self._stats = stats
         self._time = epoc
+        self._ptstreamkeys = list()
         self.data = self.parse_stats()
 
     def _pack_stats(self, params, start, fields=None):
@@ -746,6 +754,20 @@ class XenaTXStats(object):
                   'injectedtid', 'training']
         return self._pack_stats(params, start, fields)
 
+    @property
+    def pt_stream_keys(self):
+        """
+        :return: Return a list of pt_stream_x stream key ids
+        """
+        return self._ptstreamkeys
+
+    @property
+    def time(self):
+        """
+        :return: Time as String of epoc of when stats were collected
+        """
+        return self._time
+
     def parse_stats(self):
         """ Parse the stats from pr all command
         :return: Dictionary of all stats
@@ -761,6 +783,7 @@ class XenaTXStats(object):
                 statdict['pt_extra'] = self._pack_txextra_stats(param, 2)
             elif param[1] == 'PT_STREAM':
                 entry_id = "pt_stream_%s" % param[2].strip('[]')
+                self._ptstreamkeys.append(entry_id)
                 statdict[entry_id] = self._pack_stats(param, 3)
             else:
                 logging.warning("XenaPort: unknown stats: %s", param[1])

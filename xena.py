@@ -19,19 +19,19 @@ Xena Traffic Generator Model
 # be ready.
 
 # TODO CT List of things that need to be completed
-# 1. Numpkts in params should be moved to config file
-# 2. Move port, ip, logon name to config file per traffic gen spec
-# 3. Integrate traffic param spec from traffic defaults with merge
-# 4. Need back to back implementation
-# 5. I don't really like having two implementations for generating traffic.
+# 1. Integrate traffic param spec from traffic defaults with merge
+# 2. Need back to back implementation
+# 3. I don't really like having two implementations for generating traffic.
 # We have one way that uses the exe file, and another that uses the socket
 # api. This means we need to implement the traffic defaults into the xml
 # file for the exe file. Possible improvement down the road would be to
 # use the API instead of the exe file. This will make the code easier to
 # maintain. This is just an opinion and not a real TODO.
-# 6. Need to modify xml file for traffic defaults in exe implementation.
+# 4. Need to modify xml file for traffic defaults in exe implementation.
 
 # VSPerf imports
+from conf import settings
+from results_constants import ResultsConstants
 from trafficgenhelper import TRAFFIC_DEFAULTS, merge_spec
 # import trafficgen
 
@@ -45,7 +45,6 @@ import sys
 import time as Time
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
-from core.results.results_constants import ResultsConstants
 
 # XenaDriver
 import XenaDriver
@@ -56,12 +55,14 @@ import XenaDriver
 import scapy.layers.inet as inet
 
 # TODO need to move this to the conf file as other generators use -CT
-TRAFFICGEN_IP = '10.19.15.19'
-TRAFFICGEN_PORT1 = '0'
-TRAFFICGEN_PORT2 = '1'
-TRAFFICGEN_USER = 'vsperf'
-TRAFFICGEN_MODULE1 = '3'
-TRAFFICGEN_MODULE2 = '3'
+settings.load_from_dir('conf')
+TRAFFICGEN_IP = settings.getValue('TRAFFICGEN_XENA_IP')
+TRAFFICGEN_PORT1 = settings.getValue('TRAFFICGEN_XENA_PORT1')
+TRAFFICGEN_PORT2 = settings.getValue('TRAFFICGEN_XENA_PORT2')
+TRAFFICGEN_USER = settings.getValue('TRAFFICGEN_XENA_USER')
+TRAFFICGEN_PASSWORD = settings.getValue('TRAFFICGEN_XENA_PASSWORD')
+TRAFFICGEN_MODULE1 = settings.getValue('TRAFFICGEN_XENA_MODULE1')
+TRAFFICGEN_MODULE2 = settings.getValue('TRAFFICGEN_XENA_MODULE2')
 
 # This needs to be changed to inherit the trafficgen.ITrafficGenerator abstract
 # class. I have left it out currently because it calls into specific VSPerf
@@ -121,11 +122,9 @@ class Xena(object):
         l3 = inet.IP(src=TRAFFIC_DEFAULTS['l3']['srcip'],
                      dst=TRAFFIC_DEFAULTS['l3']['dstip'],
                      proto=TRAFFIC_DEFAULTS['l3']['proto'])
-        # L4 = inet.TCP(src=TRAFFIC_DEFAULTS['l2']['srcport'],
-        #              dst=TRAFFIC_DEFAULTS['l2']['dstport'])
         packet = l2/l3
         packet_bytes = bytes(packet)
-        packet_hex = '0x' + binascii.hexlify(packet_bytes)
+        packet_hex = '0x' + binascii.hexlify(packet_bytes).decode('utf-8')
         return packet_hex
         # TODO VLANS needs to addressed as well.
 
@@ -138,11 +137,13 @@ class Xena(object):
         # TODO get these parameters
         # result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = ?
         # result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = ?
-        result_dict[ResultsConstants.THROUGHPUT_RX_PERCENT]  =  (100 - int(root[0][1][0].get(
-                'TotalLossRatioPcnt'))) * int(root[0][1][0].get(
-                    'TotalTxRatePcnt'))
-        result_dict[ResultsConstants.TX_RATE_FPS] = root[0][1][0].get('TotalTxRateFps')
-        result_dict[ResultsConstants.TX_RATE_MBPS] = int(root[0][1][0].get(
+        result_dict[ResultsConstants.THROUGHPUT_RX_PERCENT] = (
+            100 - int(root[0][1][0].get(
+                    'TotalLossRatioPcnt'))) * float(root[0][1][0].get(
+                        'TotalTxRatePcnt'))
+        result_dict[ResultsConstants.TX_RATE_FPS] = root[0][1][0].get(
+                'TotalTxRateFps')
+        result_dict[ResultsConstants.TX_RATE_MBPS] = float(root[0][1][0].get(
                 'TotalTxRateBpsL2'))/1000
         result_dict[ResultsConstants.TX_RATE_PERCENT] = root[0][1][0].get(
                 'TotalTxRatePcnt')
@@ -213,24 +214,25 @@ class Xena(object):
         if not self.xm:
             self.connect()
 
-        self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1,
-                                              TRAFFICGEN_PORT1)
         if not self._port0:
-            self._logger.debug("Fail to add port " + str(TRAFFICGEN_PORT1))
-            sys.exit(-1)
+            self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1,
+                                              TRAFFICGEN_PORT1)
+            if not self._port0:
+                self._logger.error("Fail to add port " + str(TRAFFICGEN_PORT1))
+                sys.exit(-1)
+            self._port0.reserve_port()
 
-        self._port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2,
-                                              TRAFFICGEN_PORT2)
         if not self._port1:
-            self._logger.debug("Fail to add port" + str(TRAFFICGEN_PORT2))
-            sys.exit(-1)
+            self._port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2,
+                                                  TRAFFICGEN_PORT2)
+            if not self._port1:
+                self._logger.error("Fail to add port" + str(TRAFFICGEN_PORT2))
+                sys.exit(-1)
+            self._port1.reserve_port()
 
         # Clear port configuration for a clean start
         self._port0.reset_port()
         self._port1.reset_port()
-
-        self._port0.reserve_port()
-        self._port1.reserve_port()
 
         # Add one stream for port 0
         s1_p0 = self._port0.add_stream()
@@ -257,32 +259,28 @@ class Xena(object):
         self._port0.traffic_off()
 
         # getting results
-        tx_stats = self._port0.get_tx_stats().data
-        rx_stats = self._port1.get_rx_stats().data
-
-        txkey = tx_stats.keys()[0]
-        rxkey = rx_stats.keys()[0]
+        tx_stats = self._port0.get_tx_stats()
+        rx_stats = self._port1.get_rx_stats()
 
         # TODO implement multiple stream stats.
         result_dict = OrderedDict()
 
-        result_dict[ResultsConstants.TX_FRAMES] = tx_stats[txkey][
-            'pt_stream_0']['packets']
-        result_dict[ResultsConstants.RX_FRAMES] = rx_stats[
-            rxkey]['pr_tpldstraffic']['0']['packets']
-        result_dict[ResultsConstants.TX_BYTES] = tx_stats[txkey][
-            'pt_stream_0']['bytes']
-        result_dict[ResultsConstants.RX_BYTES] = rx_stats[rxkey][
-            'pr_tpldstraffic']['0']['bytes']
-        result_dict[ResultsConstants.PAYLOAD_ERR] = rx_stats[rxkey][
-            'pr_tplderrors']['0']['pld']
-        result_dict[ResultsConstants.SEQ_ERR] = rx_stats[rxkey][
-            'pr_tplderrors']['0']['seq']
+        result_dict[ResultsConstants.TX_FRAMES] = tx_stats.data[
+            tx_stats.time][tx_stats.pt_stream_keys[0]]['packets']
+        result_dict[ResultsConstants.RX_FRAMES] = rx_stats.data[
+            rx_stats.time]['pr_tpldstraffic']['0']['packets']
+        result_dict[ResultsConstants.TX_BYTES] = tx_stats.data[
+            tx_stats.time][tx_stats.pt_stream_keys[0]]['bytes']
+        result_dict[ResultsConstants.RX_BYTES] = rx_stats.data[
+            rx_stats.time]['pr_tpldstraffic']['0']['bytes']
+        result_dict[ResultsConstants.PAYLOAD_ERR] = rx_stats.data[
+            rx_stats.time]['pr_tplderrors']['0']['pld']
+        result_dict[ResultsConstants.SEQ_ERR] = rx_stats.data[
+            rx_stats.time]['pr_tplderrors']['0']['seq']
 
         return result_dict
 
-    def send_cont_traffic(self, traffic=None, numpkts=100, duration=20,
-                          framerate=0):
+    def send_cont_traffic(self, traffic=None, duration=20, framerate=0):
         """Send a continuous flow of traffic.r
 
         Send packets at ``framerate``, using ``traffic`` configuration,
@@ -311,18 +309,30 @@ class Xena(object):
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
 
-        if self.xm:
+        if not self.xm:
             self.connect()
 
-        self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
         if not self._port0:
-            self._logger.debug("Fail to add port " + str(TRAFFICGEN_PORT1))
-            sys.exit(-1)
+            self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1,
+                                              TRAFFICGEN_PORT1)
+            if not self._port0:
+                self._logger.error("Fail to add port " + str(TRAFFICGEN_PORT1))
+                sys.exit(-1)
+            self._port0.reserve_port()
 
-        self._port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
         if not self._port1:
-            self._logger.debug("Fail to add port" + str(TRAFFICGEN_PORT2))
-            sys.exit(-1)
+            self._port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2,
+                                                  TRAFFICGEN_PORT2)
+            if not self._port1:
+                self._logger.error("Fail to add port" + str(TRAFFICGEN_PORT2))
+                sys.exit(-1)
+            self._port1.reserve_port()
+
+        # Clear port configuration for a clean start
+        self._port0.reset_port()
+        self._port1.reset_port()
+        self._port0.clear_stats()
+        self._port1.clear_stats()
 
         s1_p0 = self._port0.add_stream()
         s1_p0.set_on()
@@ -333,53 +343,41 @@ class Xena(object):
         s1_p0.set_packet_length('fixed', TRAFFIC_DEFAULTS['l2']['framesize'],
                                       16383)
         s1_p0.set_packet_payload('incrementing', '0x00')
-
-        # CT Is this really needed since we set the automatic stop below?
-        # s1_p0.set_packet_limit(numpkts)
         s1_p0.set_payload_id(0)
 
-        self._port0.set_port_time_limit(duration*1000)  # automatic stop
-
-        # TODO CT is this ok to clear these again?
-        self._port0.clear_stats()
-        self._port1.clear_stats()
+        self._port0.set_port_time_limit(duration*1000000)  # automatic stop
 
         # start the traffic
         self._port0.traffic_on()
         Time.sleep(duration)
+        # TODO (BUG) pps and bps stats are showing zero with this implementation
 
         # getting results
-        tx_stats = self._port0.get_tx_stats().data
-        rx_stats = self._port1.get_rx_stats().data
-
-        print(tx_stats)
-        print(rx_stats)
-
-        txkey = tx_stats.keys()[0]
-        rxkey = rx_stats.keys()[0]
+        tx_stats = self._port0.get_tx_stats()
+        rx_stats = self._port1.get_rx_stats()
 
         # TODO need to implement multistream stat collection CT
         result_dict = OrderedDict()
 
-        result_dict[ResultsConstants.TX_RATE_FPS] = tx_stats[txkey][
-            'pt_stream_0']['pps']
-        result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = rx_stats[rxkey][
-            'pr_tpldstraffic']['0']['pps']
-        result_dict[ResultsConstants.TX_RATE_MBPS] = tx_stats[txkey][
-            'pt_stream_0']['bps'] * 1000
-        result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = rx_stats[rxkey][
-            'pr_tpldstraffic']['0']['bps'] * 1000
+        result_dict[ResultsConstants.TX_RATE_FPS] = tx_stats.data[
+            tx_stats.time][tx_stats.pt_stream_keys[0]]['pps']
+        result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = rx_stats.data[
+            rx_stats.time]['pr_tpldstraffic']['0']['pps']
+        result_dict[ResultsConstants.TX_RATE_MBPS] = tx_stats.data[
+            tx_stats.time][tx_stats.pt_stream_keys[0]]['bps'] * 1000
+        result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = rx_stats.data[
+            rx_stats.time]['pr_tpldstraffic']['0']['bps'] * 1000
 
         # TODO: Find port speed and % linerate out of it (based on framesize)
         # result['Tx Throughput % linerate'] = tx_stats[pt_stream_0][0]
         # result['Rx Throughput % linerate'] = rx_stats[pr_tpldstraffic][0][0]
 
-        result_dict[ResultsConstants.MIN_LATENCY_NS] = rx_stats[rxkey][
-            'pr_tpldlatency']['0']['min']
-        result_dict[ResultsConstants.MAX_LATENCY_NS] = rx_stats[rxkey][
-            'pr_tpldlatency']['0']['max']
-        result_dict[ResultsConstants.AVG_LATENCY_NS] = rx_stats[rxkey][
-            'pr_tpldlatency']['0']['avg']
+        result_dict[ResultsConstants.MIN_LATENCY_NS] = rx_stats.data[
+            rx_stats.time]['pr_tpldlatency']['0']['min']
+        result_dict[ResultsConstants.MAX_LATENCY_NS] = rx_stats.data[
+            rx_stats.time]['pr_tpldlatency']['0']['max']
+        result_dict[ResultsConstants.AVG_LATENCY_NS] = rx_stats.data[
+            rx_stats.time]['pr_tpldlatency']['0']['avg']
 
         return result_dict
 
@@ -402,21 +400,31 @@ class Xena(object):
         if not self.xm:
             self.connect()
 
-        self._port0 = self.xm.add_port(TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
         if not self._port0:
-            self._logger.debug("Fail to add port " + str(TRAFFICGEN_PORT1))
-            sys.exit(-1)
+            self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1,
+                                              TRAFFICGEN_PORT1)
+            if not self._port0:
+                self._logger.error("Fail to add port " + str(TRAFFICGEN_PORT1))
+                sys.exit(-1)
+            self._port0.reserve_port()
 
-        self._port1 = self.xm.add_port(TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
         if not self._port1:
-            self._logger.debug("Fail to add port" + str(TRAFFICGEN_PORT2))
-            sys.exit(-1)
+            self._port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2,
+                                                  TRAFFICGEN_PORT2)
+            if not self._port1:
+                self._logger.error("Fail to add port" + str(TRAFFICGEN_PORT2))
+                sys.exit(-1)
+            self._port1.reserve_port()
 
-        s1_p0 = self._port0.add_stream(1)
+        # Clear port configuration for a clean start
+        self._port0.reset_port()
+        self._port1.reset_port()
+
+        s1_p0 = self._port0.add_stream()
         s1_p0.set_on()
         s1_p0.set_packet_limit(-1)  # for continues flow
 
-        s1_p0.set_rate_fraction()
+        s1_p0.set_rate_fraction(1000000)
         s1_p0.set_packet_header(self.build_test_packet())
         s1_p0.set_packet_length('fixed', TRAFFIC_DEFAULTS['l2']['framesize'],
                                 16383)
@@ -426,6 +434,9 @@ class Xena(object):
         # s1_p0.set_tx_time_limit_ms(time*1000)
 
         s1_p0.set_payload_id(0)
+
+        self._port0.clear_stats()
+        self._port1.clear_stats()
 
         # start the traffic and return
         self._port0.traffic_on()
@@ -438,50 +449,46 @@ class Xena(object):
         self._port0.traffic_off()
 
         # getting results
-        tx_stats = self._port0.get_tx_stats().data
-        rx_stats = self._port1.get_rx_stats().data
-
-        txkey = tx_stats.keys()[0]
-        rxkey = rx_stats.keys()[0]
+        tx_stats = self._port0.get_tx_stats()
+        rx_stats = self._port1.get_rx_stats()
 
         # TODO need to implement multistream stat collection CT
         result_dict = OrderedDict()
 
-        result_dict[ResultsConstants.TX_RATE_FPS] = tx_stats[txkey][
-            'pt_stream_0']['pps']
-        result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = rx_stats[rxkey][
-            'pr_tpldstraffic']['0']['pps']
-        result_dict[ResultsConstants.TX_RATE_MBPS] = tx_stats[txkey][
-            'pt_stream_0']['bps'] * 1000
-        result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = rx_stats[rxkey][
-            'pr_tpldstraffic']['0']['bps'] * 1000
+        result_dict[ResultsConstants.TX_RATE_FPS] = tx_stats.data[
+            tx_stats.time][tx_stats.pt_stream_keys[0]]['pps']
+        result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = rx_stats.data[
+            rx_stats.time]['pr_tpldstraffic']['0']['pps']
+        result_dict[ResultsConstants.TX_RATE_MBPS] = tx_stats.data[
+            tx_stats.time][tx_stats.pt_stream_keys[0]]['bps'] * 1000
+        result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = rx_stats.data[
+            rx_stats.time]['pr_tpldstraffic']['0']['bps'] * 1000
 
         # TODO: Find port speed and % linerate out of it (based on framesize)
         # result['Tx Throughput % linerate'] = tx_stats[pt_stream_0][0]
         # result['Rx Throughput % linerate'] = rx_stats[pr_tpldstraffic][0][0]
 
-        result_dict[ResultsConstants.MIN_LATENCY_NS] = rx_stats[rxkey][
-            'pr_tpldlatency']['0']['min']
-        result_dict[ResultsConstants.MAX_LATENCY_NS] = rx_stats[rxkey][
-            'pr_tpldlatency']['0']['max']
-        result_dict[ResultsConstants.AVG_LATENCY_NS] = rx_stats[rxkey][
-            'pr_tpldlatency']['0']['avg']
+        result_dict[ResultsConstants.MIN_LATENCY_NS] = rx_stats.data[
+            rx_stats.time]['pr_tpldlatency']['0']['min']
+        result_dict[ResultsConstants.MAX_LATENCY_NS] = rx_stats.data[
+            rx_stats.time]['pr_tpldlatency']['0']['max']
+        result_dict[ResultsConstants.AVG_LATENCY_NS] = rx_stats.data[
+            rx_stats.time]['pr_tpldlatency']['0']['avg']
 
         return result_dict
 
-        # TODO, need a return here of the results per spec -CT
-        # TODO Although I'm not sure what results they want??
-
     def send_rfc2544_throughput(self, traffic=None, trials=3, duration=20,
                                 lossrate=0.0):
-
-        # TODO Need to implement trials CT
 
         self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
         if traffic:
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
+
+        # debug for quicker testing
+        trials = 1
+        duration = 3
 
         # Read configuration file to variable
         with open('./Configuration.x2544', 'r', encoding='utf-8') as data_file:
@@ -642,7 +649,8 @@ if __name__ == "__main__":
     print("1. send_rfc2544_throughput")
     print("2. send_burst_traffic")
     print("3. send_cont_traffic/stop_cont_traffic")
-    print("4. Quit")
+    print("4. Perform each in order.")
+    print("5. Quit")
     ans = 0
     while ans not in ('1', '2', '3', '4'):
         if sys.version[0] == '3':
@@ -663,10 +671,23 @@ if __name__ == "__main__":
     if ans == '2':
         result = xena_obj.send_burst_traffic()
     if ans == '3':
-        xena_obj.send_cont_traffic()
+        xena_obj.start_cont_traffic()
         Time.sleep(5)
-        xena_obj.stop_cont_traffic()
+        result = xena_obj.stop_cont_traffic()
     if ans == '4':
+        #result = xena_obj.send_rfc2544_throughput()
+        #for key in result.keys():
+        #    print(key, result[key])
+        result = xena_obj.send_burst_traffic()
+        for key in result.keys():
+            print(key, result[key])
+        xena_obj.start_cont_traffic()
+        Time.sleep(5)
+        result = xena_obj.stop_cont_traffic()
+        for key in result.keys():
+            print(key, result[key])
+        result = xena_obj.send_cont_traffic()
+    if ans == '5':
         sys.exit(0)
     for key in result.keys():
         print(key, result[key])
