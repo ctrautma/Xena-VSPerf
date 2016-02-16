@@ -122,11 +122,17 @@ class Xena(object):
         l3 = inet.IP(src=TRAFFIC_DEFAULTS['l3']['srcip'],
                      dst=TRAFFIC_DEFAULTS['l3']['dstip'],
                      proto=TRAFFIC_DEFAULTS['l3']['proto'])
-        packet = l2/l3
+        if TRAFFIC_DEFAULTS['vlan']['enabled']:
+            vlan = inet.Dot1Q(vlan=TRAFFIC_DEFAULTS['vlan']['id'],
+                              prio=TRAFFIC_DEFAULTS['vlan']['priority'],
+                              id=TRAFFIC_DEFAULTS['vlan']['cfi'])
+        else:
+            vlan = None
+        packet = l2/vlan/l3 if vlan else l2/l3
         packet_bytes = bytes(packet)
         packet_hex = '0x' + binascii.hexlify(packet_bytes).decode('utf-8')
         return packet_hex
-        # TODO VLANS needs to addressed as well.
+        # TODO VLANS doesn't seem to work yet..
 
     @staticmethod
     def _create_throughput_result(root):
