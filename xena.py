@@ -28,6 +28,7 @@ Xena Traffic Generator Model
 # use the API instead of the exe file. This will make the code easier to
 # maintain. This is just an opinion and not a real TODO.
 # 4. Need to modify xml file for traffic defaults in exe implementation.
+# 5. xena.exe is not open source, this could be a major issue.
 
 # VSPerf imports
 from conf import settings
@@ -54,7 +55,6 @@ import XenaDriver
 # pip install scapy-python3 for python 3.x
 import scapy.layers.inet as inet
 
-# TODO need to move this to the conf file as other generators use -CT
 settings.load_from_dir('conf')
 TRAFFICGEN_IP = settings.getValue('TRAFFICGEN_XENA_IP')
 TRAFFICGEN_PORT1 = settings.getValue('TRAFFICGEN_XENA_PORT1')
@@ -176,7 +176,8 @@ class Xena(object):
         """
         self._xsocket = XenaDriver.XenaSocketDriver(TRAFFICGEN_IP)
         # create the manager session
-        self.xm = XenaDriver.XenaManager(self._xsocket, 'xena')
+        self.xm = XenaDriver.XenaManager(self._xsocket, TRAFFICGEN_USER,
+                                         TRAFFICGEN_PASSWORD)
 
     def disconnect(self):
         """Disconnect from the traffic generator.
@@ -222,7 +223,7 @@ class Xena(object):
 
         if not self._port0:
             self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1,
-                                              TRAFFICGEN_PORT1)
+                                                  TRAFFICGEN_PORT1)
             if not self._port0:
                 self._logger.error("Fail to add port " + str(TRAFFICGEN_PORT1))
                 sys.exit(-1)
@@ -252,16 +253,17 @@ class Xena(object):
         s1_p0.set_packet_limit(numpkts)
         s1_p0.set_rate_fraction(framerate*10000),
         s1_p0.set_payload_id(0)
+        self._port0.set_port_time_limit(duration*1000000)  # automatic stop
 
         self._port0.clear_stats()
         self._port1.clear_stats()
 
         # start/[wait]/stop the traffic
         if not self._port0.traffic_on():
-            self._logger.debug(
+            self._logger.error(
                     "Failure to start traffic. Check settings and retry.")
             sys.exit(1)
-        Time.sleep(duration)
+        Time.sleep(duration + 1)
         self._port0.traffic_off()
 
         # getting results
@@ -286,7 +288,8 @@ class Xena(object):
 
         return result_dict
 
-    def send_cont_traffic(self, traffic=None, duration=20, framerate=0):
+    def send_cont_traffic(self, traffic=None, duration=20, framerate=0,
+                          multistream=False):
         """Send a continuous flow of traffic.r
 
         Send packets at ``framerate``, using ``traffic`` configuration,
@@ -354,9 +357,11 @@ class Xena(object):
         self._port0.set_port_time_limit(duration*1000000)  # automatic stop
 
         # start the traffic
-        self._port0.traffic_on()
-        Time.sleep(duration)
-        # TODO (BUG) pps and bps stats are showing zero with this implementation
+        if not self._port0.traffic_on():
+            self._logger.error(
+                    "Failure to start traffic. Check settings and retry.")
+            sys.exit(1)
+        Time.sleep(duration + 1)
 
         # getting results
         tx_stats = self._port0.get_tx_stats()
@@ -436,16 +441,16 @@ class Xena(object):
                                 16383)
         s1_p0.set_packet_payload('incrementing', '0x00')
 
-        # This is a non blocking traffic start. Why are we setting a limit? CT
-        # s1_p0.set_tx_time_limit_ms(time*1000)
-
         s1_p0.set_payload_id(0)
 
         self._port0.clear_stats()
         self._port1.clear_stats()
 
         # start the traffic and return
-        self._port0.traffic_on()
+        if not self._port0.traffic_on():
+            self._logger.error(
+                    "Failure to start traffic. Check settings and retry.")
+            sys.exit(1)
 
     def stop_cont_traffic(self):
         """Stop continuous transmission and return results.
@@ -484,7 +489,7 @@ class Xena(object):
         return result_dict
 
     def send_rfc2544_throughput(self, traffic=None, trials=3, duration=20,
-                                lossrate=0.0):
+                                lossrate=0.0, multistream=False):
 
         self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
@@ -492,7 +497,7 @@ class Xena(object):
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
 
-        # debug for quicker testing
+        # TODO remove this, debug for quicker testing
         trials = 1
         duration = 3
 
@@ -659,14 +664,9 @@ if __name__ == "__main__":
     print("5. Quit")
     ans = 0
     while ans not in ('1', '2', '3', '4'):
-        if sys.version[0] == '3':
-            print("Version 3")
-            ans = input("> ")
-        else:
-            print("Version 2")
-            ans = raw_input("> ")
+        ans = input("> ")
         try:
-            if int(ans) > 0 and int(ans) < 5:
+            if 6 > int(ans) > 0:
                 break
             else:
                 print("!!Invalid entry!!")
@@ -681,9 +681,9 @@ if __name__ == "__main__":
         Time.sleep(5)
         result = xena_obj.stop_cont_traffic()
     if ans == '4':
-        #result = xena_obj.send_rfc2544_throughput()
-        #for key in result.keys():
-        #    print(key, result[key])
+        result = xena_obj.send_rfc2544_throughput()
+        for key in result.keys():
+            print(key, result[key])
         result = xena_obj.send_burst_traffic()
         for key in result.keys():
             print(key, result[key])
