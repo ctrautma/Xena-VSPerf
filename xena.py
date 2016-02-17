@@ -248,7 +248,7 @@ class Xena(object):
         # setup stream params
         s1_p0.set_packet_header(self.build_test_packet())
         s1_p0.set_packet_length(
-                'fixed', TRAFFIC_DEFAULTS['l2']['framesize'], 16383)
+                'fixed', self._params['traffic']['l2']['framesize'], 16383)
         s1_p0.set_packet_payload('incrementing', '0x00')
         s1_p0.set_packet_limit(numpkts)
         s1_p0.set_rate_fraction(framerate*10000),
@@ -349,8 +349,8 @@ class Xena(object):
 
         s1_p0.set_rate_fraction(1000000)
         s1_p0.set_packet_header(self.build_test_packet())
-        s1_p0.set_packet_length('fixed', TRAFFIC_DEFAULTS['l2']['framesize'],
-                                      16383)
+        s1_p0.set_packet_length(
+                'fixed', self._params['traffic']['l2']['framesize'], 16383)
         s1_p0.set_packet_payload('incrementing', '0x00')
         s1_p0.set_payload_id(0)
 
@@ -437,8 +437,8 @@ class Xena(object):
 
         s1_p0.set_rate_fraction(1000000)
         s1_p0.set_packet_header(self.build_test_packet())
-        s1_p0.set_packet_length('fixed', TRAFFIC_DEFAULTS['l2']['framesize'],
-                                16383)
+        s1_p0.set_packet_length(
+                'fixed', self._params['traffic']['l2']['framesize'], 16383)
         s1_p0.set_packet_payload('incrementing', '0x00')
 
         s1_p0.set_payload_id(0)
@@ -504,6 +504,7 @@ class Xena(object):
         # Read configuration file to variable
         with open('./Configuration.x2544', 'r', encoding='utf-8') as data_file:
             x2544_Configuration = json.loads(data_file.read())
+        # TODO CT Have to change config from traffic profile
 
         x2544_Configuration['TestOptions']['TestTypeOptionMap']['Throughput'][
             'Iterations'] = trials
