@@ -45,6 +45,7 @@ CMD_RELEASE = 'p_reservation release'
 CMD_RELINQUISH = 'p_reservation relinquish'
 CMD_RESET = 'p_reset'
 CMD_SET_PORT_TIME_LIMIT = 'p_txtimelimit'
+CMD_SET_STREAM_HEADER_PROTOCOL = 'ps_headerprotocol'
 CMD_SET_STREAM_ON_OFF = 'ps_enable'
 CMD_SET_STREAM_PACKET_HEADER = 'ps_packetheader'
 CMD_SET_STREAM_PACKET_LENGTH = 'ps_packetlength'
@@ -479,6 +480,19 @@ class XenaStream(object):
         :return: streamID value as string
         """
         return self._streamID
+
+    def set_header_protocol(self, protocolheader):
+        """Set the header info for the packet header hex.
+        If the packet header contains just Ethernet and IP info then call this
+        method with ETHERNET IP as the protocol header.
+
+        :param protocolheader: protocol header argument
+        :return: Boolean True if success, False if error
+        """
+        command = make_stream_command(
+            CMD_SET_STREAM_HEADER_PROTOCOL,
+            protocolheader, self)
+        return self._manager.driver.ask_verify(command)
 
     def set_off(self):
         """Set the stream to off

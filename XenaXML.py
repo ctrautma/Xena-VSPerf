@@ -69,6 +69,8 @@ class XMLConfig(object):
     @duration.setter
     def duration(self, numint):
         self._duration = numint
+        self._filedata['TestOptions']['TestTypeOptionMap']['Throughput'][
+            'Duration'] = numint
 
     @property
     def lossrate(self):
@@ -77,6 +79,8 @@ class XMLConfig(object):
     @lossrate.setter
     def lossrate(self, numfloat):
         self._lossrate = numfloat
+        self._filedata['TestOptions']['TestTypeOptionMap']['Throughput'][
+            'RateIterationOptions']['AcceptableLoss'] = numfloat
 
     @property
     def trials(self):
@@ -85,3 +89,5 @@ class XMLConfig(object):
     @trials.setter
     def trials(self, numint):
         self._trials = numint
+        self._filedata['TestOptions']['TestTypeOptionMap']['Throughput'][
+            'Iterations'] = numint
