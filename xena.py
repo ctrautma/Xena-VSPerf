@@ -19,16 +19,15 @@ Xena Traffic Generator Model
 # be ready.
 
 # TODO CT List of things that need to be completed
-# 1. Integrate traffic param spec from traffic defaults with merge
-# 2. Need back to back implementation
-# 3. I don't really like having two implementations for generating traffic.
+# 1. Need back to back implementation
+# 2. I don't really like having two implementations for generating traffic.
 # We have one way that uses the exe file, and another that uses the socket
 # api. This means we need to implement the traffic defaults into the xml
 # file for the exe file. Possible improvement down the road would be to
 # use the API instead of the exe file. This will make the code easier to
 # maintain. This is just an opinion and not a real TODO.
-# 4. Need to modify xml file for traffic defaults in exe implementation.
-# 5. xena.exe is not open source, this could be a major issue.
+# 3. Need to modify xml file for traffic defaults in exe implementation.
+# 4. xena.exe is not open source, this could be a major issue.
 
 # VSPerf imports
 from conf import settings
@@ -49,6 +48,7 @@ from collections import OrderedDict
 
 # XenaDriver
 import XenaDriver
+from XenaXML import XMLConfig
 
 # scapy imports
 # pip install scapy to install on python 2.x
@@ -139,6 +139,7 @@ class Xena(object):
         """
         :return:
         """
+        # TODO BUG, rx percent seems to be off by a factor of 100
         result_dict = OrderedDict()
         # TODO get these parameters
         # result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = ?
@@ -211,6 +212,8 @@ class Xena(object):
             - List of List of Rx Bytes,
             - Payload Errors and Sequence Errors.
         """
+        # TODO DEBUG Remove this
+        # duration = 600
 
         self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
@@ -247,6 +250,7 @@ class Xena(object):
 
         # setup stream params
         s1_p0.set_packet_header(self.build_test_packet())
+        # s1_p0.set_header_protocol()
         s1_p0.set_packet_length(
                 'fixed', self._params['traffic']['l2']['framesize'], 16383)
         s1_p0.set_packet_payload('incrementing', '0x00')
@@ -349,6 +353,7 @@ class Xena(object):
 
         s1_p0.set_rate_fraction(1000000)
         s1_p0.set_packet_header(self.build_test_packet())
+        # s1_p0.set_header_protocol()
         s1_p0.set_packet_length(
                 'fixed', self._params['traffic']['l2']['framesize'], 16383)
         s1_p0.set_packet_payload('incrementing', '0x00')
@@ -437,6 +442,8 @@ class Xena(object):
 
         s1_p0.set_rate_fraction(1000000)
         s1_p0.set_packet_header(self.build_test_packet())
+        s1_p0.set_header_protocol('ETHERNET VLAN IP' if self._params['traffic'][
+            'vlan']['enabled'] else 'ETHERNET IP')
         s1_p0.set_packet_length(
                 'fixed', self._params['traffic']['l2']['framesize'], 16383)
         s1_p0.set_packet_payload('incrementing', '0x00')
@@ -502,16 +509,12 @@ class Xena(object):
         duration = 3
 
         # Read configuration file to variable
-        with open('./Configuration.x2544', 'r', encoding='utf-8') as data_file:
-            x2544_Configuration = json.loads(data_file.read())
-        # TODO CT Have to change config from traffic profile
+        xml = XMLConfig('./Configuration.x2544')
+        xml.trials = trials
+        xml.duration = duration
+        xml.lossrate = lossrate
 
-        x2544_Configuration['TestOptions']['TestTypeOptionMap']['Throughput'][
-            'Iterations'] = trials
-        x2544_Configuration['TestOptions']['TestTypeOptionMap']['Throughput'][
-            'Duration'] = duration
-        x2544_Configuration['TestOptions']['TestTypeOptionMap']['Throughput'][
-            'RateIterationOptions']['AcceptableLoss'] = lossrate
+        # TODO CT Have to change config from traffic profile
 
         """
         :param multistream: Enable multistream output by overriding the UDP port
@@ -526,9 +529,7 @@ class Xena(object):
         #    e9fa2efa-57e0-41f1-9a0c-b01d0e91925e
 
         # Write modified to the file that is expectedTo(2) Be(b) Used.
-        with open("./2bUsed.x2544", 'w',encoding='utf-8') as f:
-            json.dump(x2544_Configuration, f, indent = 2,sort_keys = True,
-                      ensure_ascii=True)
+        xml.write_file("./2bused.x2544")
 
         args=["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e"]
         subprocess.call(args)
@@ -555,32 +556,32 @@ class Xena(object):
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
 
-        # Read configuration file to variable
-        with open('./Configuration.x2544','r',encoding='utf-8') as data_file:
-            x2544_Configuration = json.loads(data_file.read())
+        # TODO remove this, debug for quicker testing
+        trials = 1
+        duration = 3
 
-        x2544_Configuration['TestOptions']['TestTypeOptionMap']['Throughput'][
-            'Iterations'] = trials
-        x2544_Configuration['TestOptions']['TestTypeOptionMap']['Throughput'][
-            'Duration'] = duration
-        x2544_Configuration['TestOptions']['TestTypeOptionMap']['Throughput'][
-            'RateIterationOptions']['AcceptableLoss'] = lossrate
+        # Read configuration file to variable
+        xml = XMLConfig('./Configuration.x2544')
+        xml.trials = trials
+        xml.duration = duration
+        xml.lossrate = lossrate
+
+        # TODO CT Have to change config from traffic profile
 
         """
         :param multistream: Enable multistream output by overriding the UDP port
         number in ``traffic`` with values from 1 to 64,000
         """
 
-        #if multistream=='enabled':
-        #    for guid in x2544_Configuration['StreamProfileHandler']['ProfileAssignmentMap']:
+        # if multistream=='enabled':
+        #    for guid in x2544_Configuration[
+        #        'StreamProfileHandler']['ProfileAssignmentMap']:
         #        guid = '929c6cd5-c4fd-40a1-a27f-6ef4ed755289'
-        #else:
+        # else:
         #    e9fa2efa-57e0-41f1-9a0c-b01d0e91925e
 
-        # Write modified to the file that is expetedTo(2) Be(b) Used.
-        with open("./2bUsed.x2544", 'w',encoding='utf-8') as f:
-            json.dump(x2544_Configuration, f, indent = 2,sort_keys = True,
-                      ensure_ascii=True)
+        # Write modified to the file that is expectedTo(2) Be(b) Used.
+        xml.write_file("./2bused.x2544")
 
         args=["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e"]
         self.mono_pipe = subprocess.popen(args)
