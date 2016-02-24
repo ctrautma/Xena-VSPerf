@@ -137,7 +137,7 @@
             {
               "SegmentType": "VLAN",
               "SegmentValue": "AAD//w==",
-              "ItemID": "9f9292f3-16a7-4ed2-ab09-ac1455f767b3",
+              "ItemID": "51af8770-99c4-4824-885d-990258e2a890",
               "ParentID": "",
               "Label": ""
             }
@@ -176,7 +176,7 @@
         },
         "ReportPropertyOptions": [],
         "TestType": "Throughput",
-        "Enabled": false,
+        "Enabled": true,
         "DurationType": "Seconds",
         "Duration": 1.0,
         "DurationFrames": 1,
@@ -217,7 +217,7 @@
         "AcceptableLoss": 0.0,
         "AcceptableLossType": "Percent",
         "TestType": "Loss",
-        "Enabled": true,
+        "Enabled": false,
         "DurationType": "Seconds",
         "Duration": 1.0,
         "DurationFrames": 1,

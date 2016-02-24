@@ -137,7 +137,7 @@
             {
               "SegmentType": "IP",
               "SegmentValue": "RQAAFAAAAAB//wAAwKjHCsCoxws=",
-              "ItemID": "bc3e0d03-c844-4c34-9823-c85c27d7381e",
+              "ItemID": "1f67026e-0a83-462f-9c43-dd3661754167",
               "ParentID": "",
               "Label": ""
             }
@@ -176,7 +176,7 @@
         },
         "ReportPropertyOptions": [],
         "TestType": "Throughput",
-        "Enabled": false,
+        "Enabled": true,
         "DurationType": "Seconds",
         "Duration": 1.0,
         "DurationFrames": 1,
@@ -217,7 +217,7 @@
         "AcceptableLoss": 0.0,
         "AcceptableLossType": "Percent",
         "TestType": "Loss",
-        "Enabled": true,
+        "Enabled": false,
         "DurationType": "Seconds",
         "Duration": 1.0,
         "DurationFrames": 1,
