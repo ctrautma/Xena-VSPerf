@@ -1,0 +1,400 @@
+{
+  "PortHandler": {
+    "EntityList": [
+      {
+        "PortRef": {
+          "ChassisId": "5eb7d875-bd28-4732-8d10-37e07c782809",
+          "ModuleIndex": 3,
+          "PortIndex": 0
+        },
+        "PortGroup": "UNDEFINED",
+        "PairPeerRef": null,
+        "PairPeerId": "",
+        "MulticastRole": "Undefined",
+        "PortSpeed": "AUTO",
+        "InterFrameGap": 20,
+        "PauseModeOn": false,
+        "AutoNegEnabled": true,
+        "AdjustPpm": 0,
+        "LatencyOffset": 0,
+        "MdiMdixMode": "AUTO",
+        "EnableFec": true,
+        "ReplyArpRequests": true,
+        "ReplyPingRequests": true,
+        "IpV4Address": "0.0.0.0",
+        "IpV4RoutingPrefix": 24,
+        "IpV4Gateway": "0.0.0.0",
+        "IpV6Address": "::",
+        "IpV6RoutingPrefix": 64,
+        "IpV6Gateway": "::",
+        "IpGatewayMacAddress": "AAAAAAAA",
+        "PublicIpAddress": "",
+        "PublicIpRoutingPrefix": 24,
+        "PublicIpAddressV6": "",
+        "PublicIpRoutingPrefixV6": 64,
+        "RemoteLoopIpAddress": "",
+        "RemoteLoopIpAddressV6": "",
+        "RemoteLoopMacAddress": "AAAAAAAA",
+        "EnablePortRateCap": false,
+        "PortRateCapValue": 1000.0,
+        "PortRateCapProfile": "Physical Port Rate",
+        "PortRateCapUnit": "Mbps",
+        "MultiStreamMap": null,
+        "ItemID": "e0d2a496-d62d-4b95-9d93-8a37cc3a7953",
+        "ParentID": "",
+        "Label": ""
+      },
+      {
+        "PortRef": {
+          "ChassisId": "5eb7d875-bd28-4732-8d10-37e07c782809",
+          "ModuleIndex": 3,
+          "PortIndex": 1
+        },
+        "PortGroup": "UNDEFINED",
+        "PairPeerRef": null,
+        "PairPeerId": "",
+        "MulticastRole": "Undefined",
+        "PortSpeed": "AUTO",
+        "InterFrameGap": 20,
+        "PauseModeOn": false,
+        "AutoNegEnabled": true,
+        "AdjustPpm": 0,
+        "LatencyOffset": 0,
+        "MdiMdixMode": "AUTO",
+        "EnableFec": true,
+        "ReplyArpRequests": true,
+        "ReplyPingRequests": true,
+        "IpV4Address": "0.0.0.0",
+        "IpV4RoutingPrefix": 24,
+        "IpV4Gateway": "0.0.0.0",
+        "IpV6Address": "::",
+        "IpV6RoutingPrefix": 64,
+        "IpV6Gateway": "::",
+        "IpGatewayMacAddress": "AAAAAAAA",
+        "PublicIpAddress": "",
+        "PublicIpRoutingPrefix": 24,
+        "PublicIpAddressV6": "",
+        "PublicIpRoutingPrefixV6": 64,
+        "RemoteLoopIpAddress": "",
+        "RemoteLoopIpAddressV6": "",
+        "RemoteLoopMacAddress": "AAAAAAAA",
+        "EnablePortRateCap": false,
+        "PortRateCapValue": 1000.0,
+        "PortRateCapProfile": "Physical Port Rate",
+        "PortRateCapUnit": "Mbps",
+        "MultiStreamMap": null,
+        "ItemID": "e15dc073-58d9-470d-8979-2ef0aa183ceb",
+        "ParentID": "",
+        "Label": ""
+      }
+    ]
+  },
+  "StreamHandler": {
+    "StreamConnectionList": [
+      {
+        "ConnectionId": 0,
+        "Port1Id": "e0d2a496-d62d-4b95-9d93-8a37cc3a7953",
+        "Port2Id": "e15dc073-58d9-470d-8979-2ef0aa183ceb",
+        "AddressOffset1": 2,
+        "AddressOffset2": 3,
+        "ItemID": "f0b8322c-a56b-41ea-b5b8-db3aa6ac6be0",
+        "ParentID": "",
+        "Label": ""
+      }
+    ]
+  },
+  "StreamProfileHandler": {
+    "ProfileAssignmentMap": {
+      "guid_e0d2a496-d62d-4b95-9d93-8a37cc3a7953": "590f7ab0-6210-458b-8bf0-3fd213c74dce",
+      "guid_e15dc073-58d9-470d-8979-2ef0aa183ceb": "1c2188a7-f556-4b81-af6c-9d4a26855f4d"
+    },
+    "EntityList": [
+      {
+        "StreamConfig": {
+          "SwModifier": null,
+          "HwModifiers": [],
+          "FieldValueRanges": [],
+          "StreamDescrPrefix": "Stream",
+          "ResourceIndex": -1,
+          "TpldId": -1,
+          "EnableState": "OFF",
+          "RateType": "Fraction",
+          "PacketLimit": 0,
+          "RateFraction": 100.0,
+          "RatePps": 0.0,
+          "RateL2Mbps": 0.0,
+          "UseBurstValues": false,
+          "BurstSize": 0,
+          "BurstDensity": 100,
+          "HeaderSegments": [
+            {
+              "SegmentType": "ETHERNET",
+              "SegmentValue": "AAAAAAAAAAAAAAAAgQA=",
+              "ItemID": "0e9f364e-263e-4933-b2f7-70a881404488",
+              "ParentID": "",
+              "Label": ""
+            },
+            {
+              "SegmentType": "VLAN",
+              "SegmentValue": "AAAIAA==",
+              "ItemID": "97e5f2d8-7091-48a6-8dcd-8bb41a8d83e5",
+              "ParentID": "",
+              "Label": ""
+            },
+            {
+              "SegmentType": "IP",
+              "SegmentValue": "RQAAFAAAAAB//wAAAAAAAAAAAAA=",
+              "ItemID": "db9eb3f5-44d7-47b6-8f4d-53cdc4ece018",
+              "ParentID": "",
+              "Label": ""
+            }
+          ],
+          "PacketLengthType": "FIXED",
+          "PacketMinSize": 64,
+          "PacketMaxSize": 64,
+          "PayloadDefinition": {
+            "PayloadType": "Incrementing",
+            "PayloadPattern": "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+          },
+          "ResourceUsed": false,
+          "ChildResourceUsed": false
+        },
+        "ItemID": "590f7ab0-6210-458b-8bf0-3fd213c74dce",
+        "ParentID": "",
+        "Label": ""
+      },
+      {
+        "StreamConfig": {
+          "SwModifier": null,
+          "HwModifiers": [],
+          "FieldValueRanges": [],
+          "StreamDescrPrefix": "Stream",
+          "ResourceIndex": -1,
+          "TpldId": -1,
+          "EnableState": "OFF",
+          "RateType": "Fraction",
+          "PacketLimit": 0,
+          "RateFraction": 100.0,
+          "RatePps": 0.0,
+          "RateL2Mbps": 0.0,
+          "UseBurstValues": false,
+          "BurstSize": 0,
+          "BurstDensity": 100,
+          "HeaderSegments": [
+            {
+              "SegmentType": "ETHERNET",
+              "SegmentValue": "AAAAAAAAAAAAAAAAgQA=",
+              "ItemID": "b81acf50-d859-4a27-936d-d73bfd8e03ad",
+              "ParentID": "",
+              "Label": ""
+            },
+            {
+              "SegmentType": "VLAN",
+              "SegmentValue": "AAAIAA==",
+              "ItemID": "d0200ae2-b132-4552-ae53-dddd3a2df801",
+              "ParentID": "",
+              "Label": ""
+            },
+            {
+              "SegmentType": "IP",
+              "SegmentValue": "RQAAFAAAAAB//wAAAAAAAAAAAAA=",
+              "ItemID": "c3a13952-9506-4cad-b829-4279744f32f3",
+              "ParentID": "",
+              "Label": ""
+            }
+          ],
+          "PacketLengthType": "FIXED",
+          "PacketMinSize": 64,
+          "PacketMaxSize": 64,
+          "PayloadDefinition": {
+            "PayloadType": "Incrementing",
+            "PayloadPattern": "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+          },
+          "ResourceUsed": false,
+          "ChildResourceUsed": false
+        },
+        "ItemID": "1c2188a7-f556-4b81-af6c-9d4a26855f4d",
+        "ParentID": "",
+        "Label": ""
+      }
+    ]
+  },
+  "TestOptions": {
+    "TestTypeOptionMap": {
+      "Throughput": {
+        "$type": "XenaCommon.TestConfig.Xena2544.TestTypeOptions.ThroughputTestOptions, Xena2544",
+        "RateIterationOptions": {
+          "SearchType": "BinarySearch",
+          "AcceptableLoss": 0.0,
+          "ResultScope": "CommonResult",
+          "FastBinarySearch": false,
+          "InitialValue": 100.0,
+          "MinimumValue": 0.1,
+          "MaximumValue": 100.0,
+          "ValueResolution": 0.5,
+          "UsePassThreshold": false,
+          "PassThreshold": 0.0
+        },
+        "ReportPropertyOptions": [],
+        "TestType": "Throughput",
+        "Enabled": true,
+        "DurationType": "Seconds",
+        "Duration": 1.0,
+        "DurationFrames": 1,
+        "DurationFrameUnit": "Mframes",
+        "Iterations": 1,
+        "ItemID": "9cc7b631-1a3e-4121-8db2-f3d8fe9d8724",
+        "ParentID": "",
+        "Label": ""
+      },
+      "Latency": {
+        "$type": "XenaCommon.TestConfig.Xena2544.TestTypeOptions.LatencyTestOptions, Xena2544",
+        "RateSweepOptions": {
+          "StartValue": 50.0,
+          "EndValue": 100.0,
+          "StepValue": 50.0
+        },
+        "LatencyMode": "Last_To_Last",
+        "RateRelativeTputMaxRate": true,
+        "TestType": "Latency",
+        "Enabled": true,
+        "DurationType": "Seconds",
+        "Duration": 1.0,
+        "DurationFrames": 1,
+        "DurationFrameUnit": "Mframes",
+        "Iterations": 1,
+        "ItemID": "e3b743ef-052b-4e82-be4c-7c8329dd948c",
+        "ParentID": "",
+        "Label": ""
+      },
+      "Loss": {
+        "$type": "XenaCommon.TestConfig.Xena2544.TestTypeOptions.LossTestOptions, Xena2544",
+        "RateSweepOptions": {
+          "StartValue": 50.0,
+          "EndValue": 100.0,
+          "StepValue": 50.0
+        },
+        "UsePassFailCriteria": false,
+        "AcceptableLoss": 0.0,
+        "AcceptableLossType": "Percent",
+        "TestType": "Loss",
+        "Enabled": true,
+        "DurationType": "Seconds",
+        "Duration": 1.0,
+        "DurationFrames": 1,
+        "DurationFrameUnit": "Mframes",
+        "Iterations": 1,
+        "ItemID": "81cb00f1-cf90-499c-b27e-01a2f47d9a4e",
+        "ParentID": "",
+        "Label": ""
+      },
+      "Back2Back": {
+        "$type": "XenaCommon.TestConfig.Xena2544.TestTypeOptions.Back2BackTestOptions, Xena2544",
+        "RateSweepOptions": {
+          "StartValue": 50.0,
+          "EndValue": 100.0,
+          "StepValue": 50.0
+        },
+        "ResultScope": "CommonResult",
+        "BurstResolution": 100.0,
+        "TestType": "Back2Back",
+        "Enabled": true,
+        "DurationType": "Seconds",
+        "Duration": 1.0,
+        "DurationFrames": 1,
+        "DurationFrameUnit": "Mframes",
+        "Iterations": 1,
+        "ItemID": "5f2feba2-7f89-4242-b7b8-f3eb5a363007",
+        "ParentID": "",
+        "Label": ""
+      }
+    },
+    "PacketSizes": {
+      "PacketSizeType": "CustomSizes",
+      "CustomPacketSizes": [
+        512.0
+      ],
+      "SwPacketStartSize": 100,
+      "SwPacketEndSize": 1500,
+      "SwPacketStepSize": 100,
+      "HwPacketMinSize": 64,
+      "HwPacketMaxSize": 1500,
+      "MixedSizesWeights": []
+    },
+    "TopologyConfig": {
+      "Topology": "MESH",
+      "Direction": "BIDIR"
+    },
+    "FlowCreationOptions": {
+      "FlowCreationType": "StreamBased",
+      "MacBaseAddress": "4,244,188",
+      "UseGatewayMacAsDmac": true,
+      "EnableMultiStream": false,
+      "PerPortStreamCount": 1,
+      "MultiStreamAddressOffset": 2,
+      "MultiStreamAddressIncrement": 1,
+      "MultiStreamMacBaseAddress": "4,244,188",
+      "UseMicroTpldOnDemand": false
+    },
+    "LearningOptions": {
+      "MacLearningMode": "EveryTrial",
+      "MacLearningRetries": 1,
+      "ArpRefreshEnabled": true,
+      "ArpRefreshPeriod": 4000.0,
+      "UseFlowBasedLearningPreamble": false,
+      "FlowBasedLearningFrameCount": 1,
+      "FlowBasedLearningDelay": 500,
+      "LearningRatePercent": 1.0,
+      "LearningDuration": 5000.0
+    },
+    "ToggleSyncState": true,
+    "SyncOffDuration": 1,
+    "SyncOnDuration": 1,
+    "PayloadDefinition": {
+      "PayloadType": "Incrementing",
+      "PayloadPattern": "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+    },
+    "EnableSpeedReductSweep": false,
+    "UsePortSyncStart": false,
+    "PortStaggerSteps": 0,
+    "ShouldStopOnLos": true,
+    "PortResetDelay": 5
+  },
+  "CreationDate": "2016-02-20 17:26:56Z",
+  "ChassisManager": {
+    "ChassisList": [
+      {
+        "ChassisID": "5eb7d875-bd28-4732-8d10-37e07c782809",
+        "HostName": "10.19.15.19",
+        "PortNumber": 22606,
+        "Password": "xena",
+        "ConnectionType": "Native",
+        "UsedModuleList": [],
+        "ResourceIndex": 0,
+        "ResourceUsed": false,
+        "ChildResourceUsed": false
+      }
+    ]
+  },
+  "ReportConfig": {
+    "CustomerName": "Xena Networks",
+    "CustomerServiceID": "",
+    "CustomerAccessID": "",
+    "Comments": "",
+    "RateUnitTerminology": "FPS",
+    "IncludeTestPairInfo": true,
+    "IncludePerStreamInfo": false,
+    "IncludeGraphs": true,
+    "PlotThroughputUnit": "Pps",
+    "GeneratePdf": true,
+    "GenerateHtml": false,
+    "GenerateXml": false,
+    "GenerateCsv": false,
+    "SaveIntermediateResults": false,
+    "ReportFilename": "xena2544-report",
+    "AppendTimestamp": true
+  },
+  "TidAllocationScope": "ConfigScope",
+  "FormatVersion": 10,
+  "ApplicationVersion": "2.39.5876.25884"
+}
