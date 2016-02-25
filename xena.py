@@ -385,6 +385,9 @@ class Xena(object):
             rx_stats.time]['pr_tpldstraffic']['0']['bps'] * 1000
 
         # TODO: Find port speed and % linerate out of it (based on framesize)
+        # bitrateL1 = bitRateL2 + frameRate * interFrameGap * 8;
+        # The bitRateL2 – is the L1bits of the packets(FPS*PacketSize) the frameRate * InterFrameGap * 8
+        # Is the completingL1 of the IFG`s (the way we refer to it…it includes the preamble as well).
         # result['Tx Throughput % linerate'] = tx_stats[pt_stream_0][0]
         # result['Rx Throughput % linerate'] = rx_stats[pr_tpldstraffic][0][0]
 

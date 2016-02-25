@@ -27,13 +27,14 @@ import time
 # Xena Socket Commands
 CMD_CLEAR_RX_STATS = 'pr_clear'
 CMD_CLEAR_TX_STATS = 'pt_clear'
+CMD_COMMENT = ';'
 CMD_CREATE_STREAM = 'ps_create'
 CMD_DELETE_STREAM = 'ps_delete'
+CMD_GET_PORT_SPEED = 'p_speedselection'
 CMD_GET_RX_STATS_PER_TID = 'pr_tpldtraffic'
 CMD_GET_STREAMS_PER_PORT = 'ps_indices'
 CMD_GET_TID_PER_STREAM = 'ps_tpldid'
 CMD_GET_TX_STATS_PER_STREAM = 'pt_stream'
-CMD_COMMENT = ';'
 CMD_GET_RX_STATS = 'pr_all ?'
 CMD_GET_TX_STATS = 'pt_all ?'
 CMD_LOGIN = 'c_logon'
@@ -391,6 +392,11 @@ class XenaPort(object):
             return True
         else:
             return False
+
+    def get_port_speed(self):
+        command = make_port_command(CMD_GET_PORT_SPEED, self)
+        speed = self._manager.driver.ask(command)
+        return speed
 
     def get_rx_stats(self):
         """Get the rx stats and return the data as a dict.
@@ -845,7 +851,7 @@ def make_stream_command(cmd, args, xenaStream):
 
 if __name__ == '__main__':
     driver = XenaSocketDriver('10.19.15.19')
-    xm = XenaManager(driver)
+    xm = XenaManager(driver, 'vsperf', 'xena')
     port0 = xm.add_module_port(3, 0)
     port1 = xm.add_module_port(3, 1)
     port0.reserve_port()
