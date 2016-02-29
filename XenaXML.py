@@ -62,7 +62,10 @@ class XMLConfig(object):
         packet = self.create_packet_header()
         header_pos = 0
         if self.l2:
-            value = str(encode_byte_array(bytes(packet)[:len(self.l2)]))
+            value = bytes(packet)
+            value = value[:len(self.l2)]
+            value = encode_byte_array(value)
+            value = value.decode('utf-8')
             d = {"SegmentType": "ETHERNET",
                  "SegmentValue": value,
                  "ItemID": "bdf7bd1c-4634-4fb5-909b-6200237e2647",
@@ -71,8 +74,10 @@ class XMLConfig(object):
             self.segments.append(d)
             header_pos += len(self.l2)
         if self.vlan:
-            value = str(encode_byte_array(bytes(packet)[header_pos: len(
-                self.vlan) + header_pos]))
+            value = bytes(packet)
+            value = value[header_pos: len(self.l2) + header_pos]
+            value = encode_byte_array(value)
+            value = value.decode('utf-8')
             d = {"SegmentType": "VLAN",
                  "SegmentValue": value,
                  "ItemID": "51af8770-99c4-4824-885d-990258e2a890",
@@ -81,8 +86,10 @@ class XMLConfig(object):
             self.segments.append(d)
             header_pos += len(self.vlan)
         if self.l3:
-            value = str(encode_byte_array(bytes(packet)[header_pos: len(
-                self.l3) + header_pos]))
+            value = bytes(packet)
+            value = value[header_pos: len(self.l3) + header_pos]
+            value = encode_byte_array(value)
+            value = value.decode('utf-8')
             d = {"SegmentType": "IP",
                  "SegmentValue": value,
                  "ItemID": "1f67026e-0a83-462f-9c43-dd3661754167",
@@ -213,9 +220,19 @@ def encode_byte_array(byte_arr):
 if __name__ == "__main__":
     print("Running UnitTest for XenaXML")
     x = XMLConfig()
-    x.build_l2_header()
+    x.build_l2_header(dst_mac='ff:ff:ff:ff:ff:ff', src_mac='ee:ee:ee:ee:ee:ee')
     x.build_l3_header_ip4()
+    # x.build_l3_header_ip4(src_ip='192.168.100.2', dst_ip='192.168.100.3',
+    #                       protocol='tcp')
     x.add_header_segments()
     x.write_config()
     x.write_file('./testthis.x2544')
-
+    x = XMLConfig('./testthis.x2544')
+    for i in decode_byte_array(x.file_data['StreamProfileHandler'][
+                                   'EntityList'][0]['StreamConfig'][
+                                   'HeaderSegments'][0]['SegmentValue']):
+        print(i)
+    for i in decode_byte_array(x.file_data['StreamProfileHandler'][
+                                   'EntityList'][0]['StreamConfig'][
+                                   'HeaderSegments'][1]['SegmentValue']):
+        print(i)
