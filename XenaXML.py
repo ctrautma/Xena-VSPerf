@@ -20,8 +20,6 @@ import scapy.layers.inet as inet
 
 _logger = logging.getLogger(__name__)
 
-# TODO Document (docstring) and comment this file
-
 
 class XMLConfig(object):
     """
