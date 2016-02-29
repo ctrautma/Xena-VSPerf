@@ -21,6 +21,7 @@ import scapy.layers.inet as inet
 _logger = logging.getLogger(__name__)
 
 # TODO Document (docstring) and comment this file
+# TODO Write opposite port profile
 
 
 class XMLConfig(object):
@@ -52,7 +53,8 @@ class XMLConfig(object):
         self.l2 = None
         self.l3 = None
         self.vlan = None
-        self.segments = list()
+        self.segment1 = list()
+        self.segment2 = list()
 
         # Read the xml file and configuration settings
         self.read_file()
@@ -62,16 +64,28 @@ class XMLConfig(object):
         packet = self.create_packet_header()
         header_pos = 0
         if self.l2:
-            value = bytes(packet)
-            value = value[:len(self.l2)]
-            value = encode_byte_array(value)
+            packet_bytes = bytes(packet)
+            l2 = packet_bytes[:len(self.l2)]
+            value = encode_byte_array(l2)
             value = value.decode('utf-8')
+
+            # swap dst and src for opposite port header info
+            op_l2 = l2[6:12] + l2[:6] + l2[12:]
+            opp_value = encode_byte_array(op_l2)
+            opp_value = opp_value.decode('utf-8')
+
             d = {"SegmentType": "ETHERNET",
                  "SegmentValue": value,
                  "ItemID": "bdf7bd1c-4634-4fb5-909b-6200237e2647",
                  "ParentID": "",
                  "Label": ""}
-            self.segments.append(d)
+            self.segment1.append(d)
+            d = {"SegmentType": "ETHERNET",
+                 "SegmentValue": opp_value,
+                 "ItemID": "bdf7bd1c-4634-4fb5-909b-6200237e2647",
+                 "ParentID": "",
+                 "Label": ""}
+            self.segment2.append(d)
             header_pos += len(self.l2)
         if self.vlan:
             value = bytes(packet)
@@ -83,19 +97,32 @@ class XMLConfig(object):
                  "ItemID": "51af8770-99c4-4824-885d-990258e2a890",
                  "ParentID": "",
                  "Label": ""}
-            self.segments.append(d)
+            self.segment1.append(d)
+            self.segment2.append(d)
             header_pos += len(self.vlan)
         if self.l3:
-            value = bytes(packet)
-            value = value[header_pos: len(self.l3) + header_pos]
-            value = encode_byte_array(value)
+            packet_bytes = bytes(packet)
+            l3 = packet_bytes[header_pos: len(self.l3) + header_pos]
+            value = encode_byte_array(l3)
             value = value.decode('utf-8')
+
+            # swap dst and src for opposite port header info
+            op_l3 = l3[:12] + l3[16:20] + l3[12:16] + l3[20:]
+            opp_value = encode_byte_array(op_l3)
+            opp_value = opp_value.decode('utf-8')
+
             d = {"SegmentType": "IP",
                  "SegmentValue": value,
                  "ItemID": "1f67026e-0a83-462f-9c43-dd3661754167",
                  "ParentID": "",
                  "Label": ""}
-            self.segments.append(d)
+            self.segment1.append(d)
+            d = {"SegmentType": "IP",
+                 "SegmentValue": opp_value,
+                 "ItemID": "1f67026e-0a83-462f-9c43-dd3661754167",
+                 "ParentID": "",
+                 "Label": ""}
+            self.segment2.append(d)
             header_pos += len(self.l3)
 
     def build_l2_header(self, dst_mac='aa:aa:aa:aa:aa:aa',
@@ -184,7 +211,9 @@ class XMLConfig(object):
         self.file_data['TestOptions']['TestTypeOptionMap']['Throughput'][
             'Iterations'] = self.trials
         self.file_data['StreamProfileHandler']['EntityList'][0][
-            'StreamConfig']['HeaderSegments'] = self.segments
+            'StreamConfig']['HeaderSegments'] = self.segment1
+        self.file_data['StreamProfileHandler']['EntityList'][1][
+            'StreamConfig']['HeaderSegments'] = self.segment2
 
     def write_file(self, output_path):
         try:
@@ -221,9 +250,8 @@ if __name__ == "__main__":
     print("Running UnitTest for XenaXML")
     x = XMLConfig()
     x.build_l2_header(dst_mac='ff:ff:ff:ff:ff:ff', src_mac='ee:ee:ee:ee:ee:ee')
-    x.build_l3_header_ip4()
-    # x.build_l3_header_ip4(src_ip='192.168.100.2', dst_ip='192.168.100.3',
-    #                       protocol='tcp')
+    x.build_l3_header_ip4(src_ip='192.168.100.2', dst_ip='192.168.100.3',
+                          protocol='tcp')
     x.add_header_segments()
     x.write_config()
     x.write_file('./testthis.x2544')
@@ -234,5 +262,14 @@ if __name__ == "__main__":
         print(i)
     for i in decode_byte_array(x.file_data['StreamProfileHandler'][
                                    'EntityList'][0]['StreamConfig'][
+                                   'HeaderSegments'][1]['SegmentValue']):
+        print(i)
+    print("src and dst swapped")
+    for i in decode_byte_array(x.file_data['StreamProfileHandler'][
+                                   'EntityList'][1]['StreamConfig'][
+                                   'HeaderSegments'][0]['SegmentValue']):
+        print(i)
+    for i in decode_byte_array(x.file_data['StreamProfileHandler'][
+                                   'EntityList'][1]['StreamConfig'][
                                    'HeaderSegments'][1]['SegmentValue']):
         print(i)
