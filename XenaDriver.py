@@ -30,7 +30,7 @@ CMD_CLEAR_TX_STATS = 'pt_clear'
 CMD_COMMENT = ';'
 CMD_CREATE_STREAM = 'ps_create'
 CMD_DELETE_STREAM = 'ps_delete'
-CMD_GET_PORT_SPEED = 'p_speedselection'
+CMD_GET_PORT_SPEED = 'p_speedselection ?'
 CMD_GET_RX_STATS_PER_TID = 'pr_tpldtraffic'
 CMD_GET_STREAMS_PER_PORT = 'ps_indices'
 CMD_GET_TID_PER_STREAM = 'ps_tpldid'
@@ -395,7 +395,16 @@ class XenaPort(object):
 
     def get_port_speed(self):
         command = make_port_command(CMD_GET_PORT_SPEED, self)
-        speed = self._manager.driver.ask(command)
+        res = self._manager.driver.ask(command).decode('utf-8')
+        res = res.split('  ')
+        res = res[2]
+        res = res[1:].rstrip('\n')
+        multiplier = res[-1]
+        res = res[:-1]
+        if multiplier == 'G':
+            speed = int(res) * 1000000000
+        elif multiplier == 'M':
+            speed = int(res) * 1000000
         return speed
 
     def get_rx_stats(self):
@@ -859,6 +868,7 @@ if __name__ == '__main__':
     port0.reset_port()
     port1.reset_port()
     p0s0 = port0.add_stream()
+    print(port1.get_port_speed())
     p0s0.set_on()
     p0s0.set_packet_header('0x525400c61020525400c61010080045000014000100004' +
                            '00066e70a0000010a000002')
