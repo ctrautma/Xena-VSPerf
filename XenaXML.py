@@ -21,11 +21,19 @@ import scapy.layers.inet as inet
 _logger = logging.getLogger(__name__)
 
 # TODO Document (docstring) and comment this file
-# TODO Write opposite port profile
 
 
 class XMLConfig(object):
+    """
+    Class to modify and read Xena JSON configuration files.
+    """
     def __init__(self, xml_path='./profiles/baseconfig.x2544'):
+        """
+        Constructor
+        :param xml_path: path to JSON file to read. Expected files must have
+         two module ports with each port having its own stream config profile.
+        :return: XMLConfig object
+        """
 
         self.xml_path = xml_path
 
@@ -61,6 +69,10 @@ class XMLConfig(object):
         self.read_config()
 
     def add_header_segments(self):
+        """
+        Build the header segments to write to the JSON file.
+        :return: None
+        """
         packet = self.create_packet_header()
         header_pos = 0
         if self.l2:
@@ -127,17 +139,43 @@ class XMLConfig(object):
 
     def build_l2_header(self, dst_mac='aa:aa:aa:aa:aa:aa',
                         src_mac='bb:bb:bb:bb:bb:bb', **kwargs):
+        """
+        Build a scapy Ethernet L2 object
+        :param dst_mac: destination mac as string. Example "aa:aa:aa:aa:aa:aa"
+        :param src_mac: source mac as string. Example "bb:bb:bb:bb:bb:bb"
+        :param kwargs: Extra params per scapy usage.
+        :return: None
+        """
         self.l2 = inet.Ether(dst=dst_mac, src=src_mac, **kwargs)
 
     def build_l3_header_ip4(self, src_ip='192.168.0.2', dst_ip='192.168.0.3',
                             protocol='UDP', **kwargs):
+        """
+        Build a scapy IPV4 L3 object
+        :param src_ip: source IP as string in dot notaion format
+        :param dst_ip: destination IP as string in dot notation format
+        :param protocol: protocol for l4
+        :param kwargs: Extra params per scapy usage
+        :return: None
+        """
         self.l3 = inet.IP(src=src_ip, dst=dst_ip, proto=protocol.lower(),
                           **kwargs)
 
     def build_vlan_header(self, vlan_id=1, **kwargs):
+        """
+        Build a Dot1Q scapy object.
+        :param vlan_id: The VLAN ID
+        :param kwargs: Extra params per scapy usage
+        :return: None
+        """
         self.vlan = inet.Dot1Q(vlan=vlan_id, **kwargs)
 
     def create_packet_header(self):
+        """
+        Create the scapy packet header based on what has been built in this
+        instance using the build methods.
+        :return: Scapy packet header
+        """
         packet = inet.Ether()
         if self.l2:
             packet = self.l2
@@ -148,6 +186,10 @@ class XMLConfig(object):
         return packet
 
     def read_config(self):
+        """
+        Read the config from the open JSON file.
+        :return: Boolean if success, False if failure.
+        """
         try:
             self.chassisIP = self.file_data['ChassisManager']['ChassisList'][
                 0]['HostName']
@@ -179,6 +221,10 @@ class XMLConfig(object):
             return False
 
     def read_file(self):
+        """
+        Read the file as specified in the instance xml_path attribute.
+        :return: Boolean if success, False if failure.
+        """
         try:
             with open(self.xml_path, 'r', encoding='utf-8') as data_file:
                 self.file_data = json.loads(data_file.read())
@@ -188,6 +234,10 @@ class XMLConfig(object):
             return False
 
     def write_config(self):
+        """
+        Write the config in preparation for exporting the data to a JSON file.
+        :return: None
+        """
         self.file_data['ChassisManager']['ChassisList'][0][
             'HostName'] = self.chassisIP
         self.file_data['ChassisManager']['ChassisList'][0][
@@ -216,6 +266,11 @@ class XMLConfig(object):
             'StreamConfig']['HeaderSegments'] = self.segment2
 
     def write_file(self, output_path):
+        """
+        Write the file as specified in the output_path param
+        :param output_path: path to write out in string format
+        :return: Boolean if success, False if failure.
+        """
         try:
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(self.file_data, f, indent=2, sort_keys=True,
