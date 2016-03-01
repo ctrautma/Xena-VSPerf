@@ -130,7 +130,6 @@ class Xena(object):
         """
         :return:
         """
-        # TODO BUG, rx percent seems to be off by a factor of 100
         result_dict = OrderedDict()
         # TODO get these parameters
         # result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = ?
@@ -616,7 +615,7 @@ class Xena(object):
 
         args = ["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e", "-r",
                 "./", "-u", TRAFFICGEN_USER]
-        self.mono_pipe = subprocess.popen(args)
+        self.mono_pipe = subprocess.Popen(args)
 
     def wait_rfc2544_throughput(self):
         """Wait for and return results of RFC2544 test.
@@ -690,10 +689,11 @@ if __name__ == "__main__":
     xena_obj = Xena()
     print("What method to test?")
     print("1. send_rfc2544_throughput")
-    print("2. send_burst_traffic")
-    print("3. send_cont_traffic/stop_cont_traffic")
-    print("4. Perform each in order.")
-    print("5. Quit")
+    print("2. start/stop rfc2544 throughput")
+    print("3. send_burst_traffic")
+    print("4. send_cont_traffic/stop_cont_traffic")
+    print("5. Perform each in order.")
+    print("6. Quit")
     ans = 0
     while ans not in ('1', '2', '3', '4'):
         ans = input("> ")
@@ -707,12 +707,16 @@ if __name__ == "__main__":
     if ans == '1':
         result = xena_obj.send_rfc2544_throughput()
     if ans == '2':
-        result = xena_obj.send_burst_traffic()
+        xena_obj.start_rfc2544_throughput()
+        Time.sleep(2)
+        xena_obj.wait_rfc2544_throughput()
     if ans == '3':
+        result = xena_obj.send_burst_traffic()
+    if ans == '4':
         xena_obj.start_cont_traffic()
         Time.sleep(5)
         result = xena_obj.stop_cont_traffic()
-    if ans == '4':
+    if ans == '5':
         result = xena_obj.send_rfc2544_throughput()
         for key in result.keys():
             print(key, result[key])
@@ -725,7 +729,7 @@ if __name__ == "__main__":
         for key in result.keys():
             print(key, result[key])
         result = xena_obj.send_cont_traffic()
-    if ans == '5':
+    if ans == '6':
         sys.exit(0)
     for key in result.keys():
         print(key, result[key])
