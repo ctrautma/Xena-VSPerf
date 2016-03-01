@@ -15,19 +15,12 @@
 Xena Traffic Generator Model
 """
 
-# TODO update Back2Back method description when Result implementation will
-# be ready.
-
 # TODO CT List of things that need to be completed
 # 1. Need back to back implementation
-# 2. I don't really like having two implementations for generating traffic.
-# We have one way that uses the exe file, and another that uses the socket
-# api. This means we need to implement the traffic defaults into the xml
-# file for the exe file. Possible improvement down the road would be to
-# use the API instead of the exe file. This will make the code easier to
-# maintain. This is just an opinion and not a real TODO.
-# 3. Need to modify xml file for traffic defaults in exe implementation.
-# 4. xena.exe is not open source, this could be a major issue.
+# 2. Need to do L1 bitrate calculation
+# 3. Need to determine what multistream is
+# 4. Need to get latency values from 2544 output / currently showing as None
+# 5. Need to implement fps into api methods.
 
 # VSPerf imports
 from conf import settings
@@ -37,9 +30,7 @@ from trafficgenhelper import TRAFFIC_DEFAULTS, merge_spec
 
 # python imports
 import binascii
-import json
 import logging
-import os
 import subprocess
 import sys
 import time as Time
@@ -147,7 +138,7 @@ class Xena(object):
         result_dict[ResultsConstants.THROUGHPUT_RX_PERCENT] = (
             100 - int(root[0][1][0].get(
                     'TotalLossRatioPcnt'))) * float(root[0][1][0].get(
-                        'TotalTxRatePcnt'))
+                        'TotalTxRatePcnt'))/100
         result_dict[ResultsConstants.TX_RATE_FPS] = root[0][1][0].get(
                 'TotalTxRateFps')
         result_dict[ResultsConstants.TX_RATE_MBPS] = float(root[0][1][0].get(
@@ -213,7 +204,7 @@ class Xena(object):
             - Payload Errors and Sequence Errors.
         """
         # TODO DEBUG Remove this
-        # duration = 600
+        duration = 600
 
         self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
@@ -250,7 +241,7 @@ class Xena(object):
 
         # setup stream params
         s1_p0.set_packet_header(self.build_test_packet())
-        # s1_p0.set_header_protocol()
+        s1_p0.set_header_protocol('ETHERNET VLAN IP')
         s1_p0.set_packet_length(
                 'fixed', self._params['traffic']['l2']['framesize'], 16383)
         s1_p0.set_packet_payload('incrementing', '0x00')
@@ -274,7 +265,6 @@ class Xena(object):
         tx_stats = self._port0.get_tx_stats()
         rx_stats = self._port1.get_rx_stats()
 
-        # TODO implement multiple stream stats.
         result_dict = OrderedDict()
 
         result_dict[ResultsConstants.TX_FRAMES] = tx_stats.data[
@@ -327,7 +317,7 @@ class Xena(object):
 
         if not self._port0:
             self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1,
-                                              TRAFFICGEN_PORT1)
+                                                  TRAFFICGEN_PORT1)
             if not self._port0:
                 self._logger.error("Fail to add port " + str(TRAFFICGEN_PORT1))
                 sys.exit(-1)
@@ -353,7 +343,9 @@ class Xena(object):
 
         s1_p0.set_rate_fraction(1000000)
         s1_p0.set_packet_header(self.build_test_packet())
-        # s1_p0.set_header_protocol()
+        # TODO Fix the below line to adapt better to the self._params
+        s1_p0.set_header_protocol('ETHERNET VLAN IP' if self._params['traffic'][
+            'vlan']['enabled'] else 'ETHERNET IP')
         s1_p0.set_packet_length(
                 'fixed', self._params['traffic']['l2']['framesize'], 16383)
         s1_p0.set_packet_payload('incrementing', '0x00')
@@ -374,7 +366,6 @@ class Xena(object):
 
         # TODO need to implement multistream stat collection CT
         result_dict = OrderedDict()
-
         result_dict[ResultsConstants.TX_RATE_FPS] = tx_stats.data[
             tx_stats.time][tx_stats.pt_stream_keys[0]]['pps']
         result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = rx_stats.data[
@@ -444,7 +435,9 @@ class Xena(object):
         s1_p0.set_packet_limit(-1)  # for continues flow
 
         s1_p0.set_rate_fraction(1000000)
+        self._port0.set_port_time_limit(duration*1000000)
         s1_p0.set_packet_header(self.build_test_packet())
+        # TODO Fix the below line to adapt better to the self._params
         s1_p0.set_header_protocol('ETHERNET VLAN IP' if self._params['traffic'][
             'vlan']['enabled'] else 'ETHERNET IP')
         s1_p0.set_packet_length(
@@ -507,17 +500,41 @@ class Xena(object):
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
 
-        # TODO remove this, debug for quicker testing
-        trials = 1
-        duration = 3
+        # TODO REMOVE THIS - DEBUG for quicker testing
+        trials = 2
+        duration = 10
+
+        # layer 2 info
+        framesize = self._params['traffic']['l2']['framesize']
+        srcmac = self._params['traffic']['l2']['srcmac']
+        dstmac = self._params['traffic']['l2']['dstmac']
+        vlanid = self._params['traffic']['vlan']['id']
+        vlanpri = self._params['traffic']['vlan']['priority']
+        vlancfi = self._params['traffic']['vlan']['cfi']
+
+        # layer 3 info
+        srcip = self._params['traffic']['l3']['srcip']
+        dstip = self._params['traffic']['l3']['dstip']
+
+        # layer 4 info
+        proto = self._params['traffic']['l3']['proto']
 
         # Read configuration file to variable
-        xml = XMLConfig('./Configuration.x2544')
+        xml = XMLConfig('./profiles/baseconfig.x2544')
         xml.trials = trials
         xml.duration = duration
-        xml.lossrate = lossrate
+        xml.loss_rate = lossrate
+        xml.custom_packet_sizes = [framesize]
 
-        # TODO CT Have to change config from traffic profile
+        xml.build_l2_header(dst_mac=dstmac, src_mac=srcmac)
+        if srcip != '0.0.0.0' or dstip != '0.0.0.0':
+            xml.build_l3_header_ip4(src_ip=srcip, dst_ip=dstip, protocol=proto)
+        if self._params['traffic']['vlan']['enabled']:
+            xml.build_vlan_header(vlan_id=vlanid, id=vlancfi, prio=vlanpri)
+
+        xml.add_header_segments()
+        xml.write_config()
+        xml.write_file('./2bUsed.x2544')
 
         """
         :param multistream: Enable multistream output by overriding the UDP port
@@ -531,14 +548,10 @@ class Xena(object):
         # else:
         #    e9fa2efa-57e0-41f1-9a0c-b01d0e91925e
 
-        # Write modified to the file that is expectedTo(2) Be(b) Used.
-        xml.write_file("./2bused.x2544")
-
-        args=["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e"]
+        args = ["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e", "-r",
+                "./", "-u", TRAFFICGEN_USER]
         subprocess.call(args)
-
-        root = ET.parse(r'{}/{}/xena2544-report.xml'.format(
-                os.path.expanduser('~'), 'Xena/Xena2544-2G/Reports')).getroot()
+        root = ET.parse(r'./xena2544-report.xml').getroot()
         return Xena._create_throughput_result(root)
 
     def start_rfc2544_throughput(self, traffic=None, trials=3, duration=20,
@@ -559,17 +572,35 @@ class Xena(object):
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
 
-        # TODO remove this, debug for quicker testing
-        trials = 1
-        duration = 3
+        # layer 2 info
+        srcmac = self._params['traffic']['l2']['srcmac']
+        dstmac = self._params['traffic']['l2']['dstmac']
+        vlanid = self._params['traffic']['vlan']['id']
+        vlanpri = self._params['traffic']['vlan']['priority']
+        vlancfi = self._params['traffic']['vlan']['cfi']
+
+        # layer 3 info
+        srcip = self._params['traffic']['l3']['srcip']
+        dstip = self._params['traffic']['l3']['dstip']
+
+        # layer 4 info
+        proto = self._params['traffic']['l3']['proto']
 
         # Read configuration file to variable
-        xml = XMLConfig('./Configuration.x2544')
+        xml = XMLConfig('./profiles/baseconfig.x2544')
         xml.trials = trials
         xml.duration = duration
-        xml.lossrate = lossrate
+        xml.loss_rate = lossrate
 
-        # TODO CT Have to change config from traffic profile
+        xml.build_l2_header(dst_mac=dstmac, src_mac=srcmac)
+        if srcip != '0.0.0.0' or dstip != '0.0.0.0':
+            xml.build_l3_header_ip4(src_ip=srcip, dst_ip=dstip, protocol=proto)
+        if self._params['traffic']['vlan']['enabled']:
+            xml.build_vlan_header(vlan_id=vlanid, id=vlancfi, prio=vlanpri)
+
+        xml.add_header_segments()
+        xml.write_config()
+        xml.write_file('./2bused.x2544')
 
         """
         :param multistream: Enable multistream output by overriding the UDP port
@@ -583,19 +614,15 @@ class Xena(object):
         # else:
         #    e9fa2efa-57e0-41f1-9a0c-b01d0e91925e
 
-        # Write modified to the file that is expectedTo(2) Be(b) Used.
-        xml.write_file("./2bused.x2544")
-
-        args=["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e"]
+        args = ["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e", "-r",
+                "./", "-u", TRAFFICGEN_USER]
         self.mono_pipe = subprocess.popen(args)
 
     def wait_rfc2544_throughput(self):
         """Wait for and return results of RFC2544 test.
         """
-        is_running = self.mono_pipe.communicate()[0]
-        result_dict = {}
+        self.mono_pipe.communicate()[0]
         root = ET.parse(r'./xena2544-report.xml').getroot()
-
         return Xena._create_throughput_result(root)
 
     def send_rfc2544_back2back(self, traffic=None, trials=1, duration=20,
