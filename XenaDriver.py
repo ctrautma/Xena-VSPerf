@@ -31,12 +31,14 @@ CMD_COMMENT = ';'
 CMD_CREATE_STREAM = 'ps_create'
 CMD_DELETE_STREAM = 'ps_delete'
 CMD_GET_PORT_SPEED = 'p_speedselection ?'
+CMD_GET_PORT_SPEED_REDUCTION = 'p_speedreduction ?'
 CMD_GET_RX_STATS_PER_TID = 'pr_tpldtraffic'
 CMD_GET_STREAMS_PER_PORT = 'ps_indices'
 CMD_GET_TID_PER_STREAM = 'ps_tpldid'
 CMD_GET_TX_STATS_PER_STREAM = 'pt_stream'
 CMD_GET_RX_STATS = 'pr_all ?'
 CMD_GET_TX_STATS = 'pt_all ?'
+CMD_INTERFRAME_GAP = 'p_interframegap'
 CMD_LOGIN = 'c_logon'
 CMD_LOGOFF = 'c_logoff'
 CMD_OWNER = 'c_owner'
@@ -393,7 +395,21 @@ class XenaPort(object):
         else:
             return False
 
+    def get_inter_frame_gap(self):
+        """
+        Get the interframe gap and return it as string
+        :return: integer of interframe gap
+        """
+        command = make_port_command(CMD_INTERFRAME_GAP + '?', self)
+        res = self._manager.driver.ask(command).decode('utf-8')
+        res = int(res.rstrip('\n').split(' ')[-1])
+        return res
+
     def get_port_speed(self):
+        """
+        Get the port speed from port and return it as a int.
+        :return: Int of port speed
+        """
         command = make_port_command(CMD_GET_PORT_SPEED, self)
         res = self._manager.driver.ask(command).decode('utf-8')
         res = res.split('  ')
@@ -406,6 +422,16 @@ class XenaPort(object):
         elif multiplier == 'M':
             speed = int(res) * 1000000
         return speed
+
+    def get_port_speed_reduction(self):
+        """
+        Get the port speed reduction value as int
+        :return: Integer of port speed reduction value
+        """
+        command = make_port_command(CMD_GET_PORT_SPEED_REDUCTION, self)
+        res = self._manager.driver.ask(command).decode('utf-8')
+        res = int(res.rstrip('\n').split(' ')[-1])
+        return res
 
     def get_rx_stats(self):
         """Get the rx stats and return the data as a dict.
@@ -868,7 +894,7 @@ if __name__ == '__main__':
     port0.reset_port()
     port1.reset_port()
     p0s0 = port0.add_stream()
-    print(port1.get_port_speed())
+    print(port1.get_port_speed_reduction())
     p0s0.set_on()
     p0s0.set_packet_header('0x525400c61020525400c61010080045000014000100004' +
                            '00066e70a0000010a000002')
