@@ -164,7 +164,7 @@
               "Label": "",
               "ParentID": "",
               "SegmentType": "IP",
-              "SegmentValue": "RQAAFAABAABABjGNwKhkAsCoZAM="
+              "SegmentValue": "RQAAFAABAABAETGCwKhkAsCoZAM="
             }
           ],
           "HwModifiers": [],
@@ -211,7 +211,7 @@
               "Label": "",
               "ParentID": "",
               "SegmentType": "IP",
-              "SegmentValue": "RQAAFAABAABABjGNwKhkA8CoZAI="
+              "SegmentValue": "RQAAFAABAABAETGCwKhkA8CoZAI="
             }
           ],
           "HwModifiers": [],
@@ -360,7 +360,7 @@
         "Label": "",
         "ParentID": "",
         "RateIterationOptions": {
-          "AcceptableLoss": 0.1,
+          "AcceptableLoss": 0,
           "FastBinarySearch": false,
           "InitialValue": 100.0,
           "MaximumValue": 100.0,
