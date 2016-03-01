@@ -267,7 +267,7 @@
     },
     "PacketSizes": {
       "CustomPacketSizes": [
-        512.0
+        64
       ],
       "HwPacketMaxSize": 1500,
       "HwPacketMinSize": 64,
@@ -350,17 +350,17 @@
       },
       "Throughput": {
         "$type": "XenaCommon.TestConfig.Xena2544.TestTypeOptions.ThroughputTestOptions, Xena2544",
-        "Duration": 1.0,
+        "Duration": 15,
         "DurationFrameUnit": "Mframes",
         "DurationFrames": 1,
         "DurationType": "Seconds",
         "Enabled": true,
         "ItemID": "5ba8b4d4-9a52-4697-860a-4af1b97d2a5c",
-        "Iterations": 3,
+        "Iterations": 2,
         "Label": "",
         "ParentID": "",
         "RateIterationOptions": {
-          "AcceptableLoss": 0.0,
+          "AcceptableLoss": 0.1,
           "FastBinarySearch": false,
           "InitialValue": 100.0,
           "MaximumValue": 100.0,
