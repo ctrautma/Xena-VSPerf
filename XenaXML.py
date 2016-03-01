@@ -41,6 +41,7 @@ class XMLConfig(object):
         self.trials = None
         self.duration = None
         self.loss_rate = None
+        self.custom_packet_sizes = list()
 
         # Xena Chassis info
         self.chassisIP = None
@@ -92,7 +93,7 @@ class XMLConfig(object):
             self.segment1.append(d)
             d = {"SegmentType": "ETHERNET",
                  "SegmentValue": opp_value,
-                 "ItemID": "bdf7bd1c-4634-4fb5-909b-6200237e2647",
+                 "ItemID": "6cb89923-61aa-4717-a3c0-20a8ad3356bf",
                  "ParentID": "",
                  "Label": ""}
             self.segment2.append(d)
@@ -108,6 +109,7 @@ class XMLConfig(object):
                  "ParentID": "",
                  "Label": ""}
             self.segment1.append(d)
+            d['ItemID'] = "3e49313c-20a5-42be-becf-6915aec64bda"
             self.segment2.append(d)
             header_pos += len(self.vlan)
         if self.l3:
@@ -129,7 +131,7 @@ class XMLConfig(object):
             self.segment1.append(d)
             d = {"SegmentType": "IP",
                  "SegmentValue": opp_value,
-                 "ItemID": "1f67026e-0a83-462f-9c43-dd3661754167",
+                 "ItemID": "fe797ed1-f29b-4050-85d4-db5ef4f08f2d",
                  "ParentID": "",
                  "Label": ""}
             self.segment2.append(d)
@@ -193,6 +195,8 @@ class XMLConfig(object):
                 0]['HostName']
             self.chassisPwd = self.file_data['ChassisManager'][
                 'ChassisList'][0]['Password']
+            self.custom_packet_sizes = self.file_data['TestOptions'][
+                'PacketSizes']['CustomPacketSizes']
             self.duration = self.file_data['TestOptions'][
                 'TestTypeOptionMap']['Throughput']['Duration']
             self.loss_rate = self.file_data['TestOptions'][
@@ -240,6 +244,8 @@ class XMLConfig(object):
             'HostName'] = self.chassisIP
         self.file_data['ChassisManager']['ChassisList'][0][
             'Password'] = self.chassisPwd
+        self.file_data['TestOptions']['PacketSizes'][
+            'CustomPacketSizes'] = self.custom_packet_sizes
         self.file_data['TestOptions']['TestTypeOptionMap']['Throughput'][
             'Duration'] = self.duration
         self.file_data['TestOptions']['TestTypeOptionMap']['Throughput'][
@@ -305,6 +311,9 @@ if __name__ == "__main__":
     x.build_l2_header(dst_mac='ff:ff:ff:ff:ff:ff', src_mac='ee:ee:ee:ee:ee:ee')
     x.build_l3_header_ip4(src_ip='192.168.100.2', dst_ip='192.168.100.3',
                           protocol='tcp')
+    x.trials = 10
+    x.duration = 30
+    x.loss_rate = 5
     x.add_header_segments()
     x.write_config()
     x.write_file('./testthis.x2544')
