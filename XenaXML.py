@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO Enable Micro TPLD if 64 byte packet and Ethernet / VLAN / IP / UDP
+
 import base64
 import json
 import logging
@@ -100,7 +102,7 @@ class XMLConfig(object):
             header_pos += len(self.l2)
         if self.vlan:
             value = bytes(packet)
-            value = value[header_pos: len(self.l2) + header_pos]
+            value = value[header_pos: len(self.vlan) + header_pos]
             value = encode_byte_array(value)
             value = value.decode('utf-8')
             d = {"SegmentType": "VLAN",
@@ -310,10 +312,11 @@ if __name__ == "__main__":
     x = XMLConfig()
     x.build_l2_header(dst_mac='ff:ff:ff:ff:ff:ff', src_mac='ee:ee:ee:ee:ee:ee')
     x.build_l3_header_ip4(src_ip='192.168.100.2', dst_ip='192.168.100.3',
-                          protocol='tcp')
-    x.trials = 10
-    x.duration = 30
-    x.loss_rate = 5
+                          protocol='udp')
+    x.trials = 2
+    x.duration = 15
+    x.loss_rate = 0
+    x.custom_packet_sizes = [64]
     x.add_header_segments()
     x.write_config()
     x.write_file('./testthis.x2544')
