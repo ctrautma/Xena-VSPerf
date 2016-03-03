@@ -164,7 +164,7 @@
               "Label": "",
               "ParentID": "",
               "SegmentType": "VLAN",
-              "SegmentValue": "AAUIAEUAABQAAQAAQBE="
+              "SegmentValue": "AAUIAA=="
             },
             {
               "ItemID": "1f67026e-0a83-462f-9c43-dd3661754167",
@@ -218,7 +218,7 @@
               "Label": "",
               "ParentID": "",
               "SegmentType": "VLAN",
-              "SegmentValue": "AAUIAEUAABQAAQAAQBE="
+              "SegmentValue": "AAUIAA=="
             },
             {
               "ItemID": "fe797ed1-f29b-4050-85d4-db5ef4f08f2d",
@@ -364,13 +364,13 @@
       },
       "Throughput": {
         "$type": "XenaCommon.TestConfig.Xena2544.TestTypeOptions.ThroughputTestOptions, Xena2544",
-        "Duration": 10,
+        "Duration": 5,
         "DurationFrameUnit": "Mframes",
         "DurationFrames": 1,
         "DurationType": "Seconds",
         "Enabled": true,
         "ItemID": "5ba8b4d4-9a52-4697-860a-4af1b97d2a5c",
-        "Iterations": 2,
+        "Iterations": 1,
         "Label": "",
         "ParentID": "",
         "RateIterationOptions": {
