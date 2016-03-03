@@ -126,8 +126,7 @@
           "UseBurstValues": false,
           "BurstSize": 0,
           "BurstDensity": 100,
-          "HeaderSegments": [
-          ],
+          "HeaderSegments": [],
           "PacketLengthType": "FIXED",
           "PacketMinSize": 64,
           "PacketMaxSize": 64,
@@ -159,8 +158,7 @@
           "UseBurstValues": false,
           "BurstSize": 0,
           "BurstDensity": 100,
-          "HeaderSegments": [
-          ],
+          "HeaderSegments": [],
           "PacketLengthType": "FIXED",
           "PacketMinSize": 64,
           "PacketMaxSize": 64,
@@ -193,7 +191,9 @@
           "UsePassThreshold": false,
           "PassThreshold": 0.0
         },
-        "ReportPropertyOptions": [],
+        "ReportPropertyOptions": [
+          "b"
+        ],
         "TestType": "Throughput",
         "Enabled": true,
         "DurationType": "Seconds",
