@@ -58,12 +58,19 @@ class XMLConfig(object):
         self.port2_UID = None
         self.chassisID = None
 
+        # Flow info
+        self.microTPLD = None
+
         # header info
         self.l2 = None
         self.l3 = None
         self.vlan = None
         self.segment1 = list()
         self.segment2 = list()
+
+        # test type
+        self.throughput_enable = None
+        self.back2back_enable = None
 
         # Read the xml file and configuration settings
         self.read_file()
@@ -193,6 +200,9 @@ class XMLConfig(object):
         :return: Boolean if success, False if failure.
         """
         try:
+            self.back2back_enable = True if self.file_data[
+                'TestOptions']['TestTypeOptionMap']['Back2Back'][
+                'Enabled'] == 'true' else False
             self.chassisIP = self.file_data['ChassisManager']['ChassisList'][
                 0]['HostName']
             self.chassisPwd = self.file_data['ChassisManager'][
@@ -204,6 +214,9 @@ class XMLConfig(object):
             self.loss_rate = self.file_data['TestOptions'][
                 'TestTypeOptionMap']['Throughput']['RateIterationOptions'][
                 'AcceptableLoss']
+            self.microTPLD = True if self.file_data[
+                'TestOptions']['FlowCreationOptions'][
+                'UseMicroTpldOnDemand'] == 'true' else False
             self.module1 = self.file_data['PortHandler']['EntityList'][0][
                 'PortRef']['ModuleIndex']
             self.module2 = self.file_data['PortHandler']['EntityList'][1][
@@ -216,6 +229,9 @@ class XMLConfig(object):
                 'PortRef']['PortIndex']
             self.port2_UID = self.file_data['PortHandler']['EntityList'][1][
                 'ItemID']
+            self.throughput_enable = True if self.file_data[
+                'TestOptions']['TestTypeOptionMap']['Throughput'][
+                'Enabled'] == 'true' else False
             self.trials = self.file_data['TestOptions']['TestTypeOptionMap'][
                 'Throughput']['Iterations']
             return True
@@ -242,6 +258,8 @@ class XMLConfig(object):
         Write the config in preparation for exporting the data to a JSON file.
         :return: None
         """
+        self.file_data['TestOptions']['TestTypeOptionMap']['Back2Back'][
+            'Enabled'] = 'true' if self.back2back_enable else 'false'
         self.file_data['ChassisManager']['ChassisList'][0][
             'HostName'] = self.chassisIP
         self.file_data['ChassisManager']['ChassisList'][0][
@@ -252,6 +270,8 @@ class XMLConfig(object):
             'Duration'] = self.duration
         self.file_data['TestOptions']['TestTypeOptionMap']['Throughput'][
             'RateIterationOptions']['AcceptableLoss'] = self.loss_rate
+        self.file_data['TestOptions']['FlowCreationOptions'][
+            'UseMicroTpldOnDemand'] == 'true' if self.microTPLD else 'false'
         self.file_data['PortHandler']['EntityList'][0]['PortRef'][
             'ModuleIndex'] = self.module1
         self.file_data['PortHandler']['EntityList'][1]['PortRef'][
@@ -264,12 +284,14 @@ class XMLConfig(object):
             'PortIndex'] = self.port2
         self.file_data['PortHandler']['EntityList'][1][
             'ItemID'] = self.port2_UID
-        self.file_data['TestOptions']['TestTypeOptionMap']['Throughput'][
-            'Iterations'] = self.trials
         self.file_data['StreamProfileHandler']['EntityList'][0][
             'StreamConfig']['HeaderSegments'] = self.segment1
         self.file_data['StreamProfileHandler']['EntityList'][1][
             'StreamConfig']['HeaderSegments'] = self.segment2
+        self.file_data['TestOptions']['TestTypeOptionMap']['Throughput'][
+            'Enabled'] = 'true' if self.throughput_enable else 'false'
+        self.file_data['TestOptions']['TestTypeOptionMap']['Throughput'][
+            'Iterations'] = self.trials
 
     def write_file(self, output_path):
         """
