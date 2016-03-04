@@ -30,9 +30,10 @@ CMD_CLEAR_TX_STATS = 'pt_clear'
 CMD_COMMENT = ';'
 CMD_CREATE_STREAM = 'ps_create'
 CMD_DELETE_STREAM = 'ps_delete'
-CMD_GET_PORT_SPEED = 'p_speedselection ?'
+CMD_GET_PORT_SPEED = 'p_speed ?'
 CMD_GET_PORT_SPEED_REDUCTION = 'p_speedreduction ?'
 CMD_GET_RX_STATS_PER_TID = 'pr_tpldtraffic'
+CMD_GET_STREAM_DATA = 'pt_stream'
 CMD_GET_STREAMS_PER_PORT = 'ps_indices'
 CMD_GET_TID_PER_STREAM = 'ps_tpldid'
 CMD_GET_TX_STATS_PER_STREAM = 'pt_stream'
@@ -412,16 +413,7 @@ class XenaPort(object):
         """
         command = make_port_command(CMD_GET_PORT_SPEED, self)
         res = self._manager.driver.ask(command).decode('utf-8')
-        res = res.split('  ')
-        res = res[2]
-        res = res[1:].rstrip('\n')
-        multiplier = res[-1]
-        res = res[:-1]
-        if multiplier == 'G':
-            speed = int(res) * 1000000000
-        elif multiplier == 'M':
-            speed = int(res) * 1000000
-        return speed
+        return res
 
     def get_port_speed_reduction(self):
         """
@@ -521,6 +513,11 @@ class XenaStream(object):
         :return: streamID value as string
         """
         return self._streamID
+
+    def get_stream_data(self):
+        command = make_stream_command(CMD_GET_STREAM_DATA, '?', self)
+        res = self._manager.driver.ask(command).decode('utf-8')
+        return res
 
     def set_header_protocol(self, protocolheader):
         """Set the header info for the packet header hex.
@@ -885,6 +882,7 @@ def make_stream_command(cmd, args, xenaStream):
 
 
 if __name__ == '__main__':
+    packetsize = 1024
     driver = XenaSocketDriver('10.19.15.19')
     xm = XenaManager(driver, 'vsperf', 'xena')
     port0 = xm.add_module_port(3, 0)
@@ -895,19 +893,30 @@ if __name__ == '__main__':
     port1.reset_port()
     p0s0 = port0.add_stream()
     print(port1.get_port_speed_reduction())
+    print(port1.get_port_speed())
     p0s0.set_on()
     p0s0.set_packet_header('0x525400c61020525400c61010080045000014000100004' +
                            '00066e70a0000010a000002')
-    p0s0.set_packet_length('fixed', 64, 16383)
+    p0s0.set_packet_length('fixed', packetsize, 16383)
     p0s0.set_packet_payload('incrementing', '0x00')
     p0s0.set_packet_limit(-1)
     p0s0.set_rate_fraction(1000000)
     p0s0.set_payload_id(0)
-    port0.set_port_time_limit(1000)
+    port0.set_port_time_limit(1000000 * 10)
     port0.clear_stats()
     port1.clear_stats()
     port0.traffic_on()
-    time.sleep(5)
+    time.sleep(11)
     port0.traffic_off()
-    print(port0.get_tx_stats().data)
-    print(port1.get_rx_stats().data)
+    txstat = port0.get_tx_stats()
+    rxstat = port1.get_rx_stats()
+    print(txstat.data)
+    print(rxstat.data)
+    rxpps = rxstat.data[rxstat.time]['pr_total']['packets'] / 10
+    l2br = (packetsize * 8) * rxpps
+    l1br = l2br + (rxpps * 20 * 8)
+    print("RXl1BR: {}".format(l1br))
+    txpps = txstat.data[txstat.time]['pt_total']['packets'] / 10
+    l2br = (packetsize * 8) * txpps
+    l1br = l2br + (txpps * 20 * 8)
+    print ("TXl1BR: {}".format(l1br))
