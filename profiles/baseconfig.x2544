@@ -350,7 +350,7 @@
     "GenerateCsv": false,
     "SaveIntermediateResults": false,
     "ReportFilename": "xena2544-report",
-    "AppendTimestamp": true
+    "AppendTimestamp": false
   },
   "TidAllocationScope": "ConfigScope",
   "FormatVersion": 10,
