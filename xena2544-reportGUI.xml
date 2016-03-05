@@ -3,14 +3,14 @@
 <Xena2544>
   <TestResults>
     <Summary>
-      <Identification TestCompany="Xena" Customer="Xena Networks" CustomerAccessID="" CustomerServiceID="" />
-      <Metrics TestDateTime="20160305-025401" TestDuration="248" GeneratedBy="Xena2544 v2.23" />
+      <Identification TestCompany="Red Hat - Kernel Networking QE" Customer="Xena Networks" CustomerAccessID="" CustomerServiceID="" />
+      <Metrics TestDateTime="20160305-015426" TestDuration="288" GeneratedBy="Xena2544 v2.39" />
       <Comment><![CDATA[]]></Comment>
     </Summary>
     <TestResult TestType="Throughput">
-      <Result FrameSize="512" TestState="PASS" TotalTxRatePcnt="21.823046875" TotalTxFrames="1025518" TotalTxRateBpsL1="4364604608" TotalTxRateBpsL2="4200521728" TotalTxRateFps="1025518" TotalRxFrames="1025518" TotalLossFrames="0" TotalLossRatioPcnt="0">
-        <Port ID="P-0-3-0" PortTxFrames="512759" PortTxBpsL1="2182302304" PortTxBpsL2="2100260864" PortTxPps="512759" PortRxFrames="512759" PortRxBpsL1="2182302304" PortRxBpsL2="2100260864" PortRxPps="512759" />
-        <Port ID="P-0-3-1" PortTxFrames="512759" PortTxBpsL1="2182302304" PortTxBpsL2="2100260864" PortTxPps="512759" PortRxFrames="512759" PortRxBpsL1="2182302304" PortRxBpsL2="2100260864" PortRxPps="512759" />
+      <Result FrameSize="512" TestState="PASS" TotalTxRatePcnt="22.343359375" TotalTxFrames="1049968.66666667" TotalTxRateBpsL1="4468666645.33333" TotalTxRateBpsL2="4300671658.66667" TotalTxRateFps="1049968.66666667" TotalRxFrames="1049968.66666667" TotalLossFrames="0" TotalLossRatioPcnt="0">
+        <Port ID="P-0-3-0" PortTxFrames="524984" PortTxBpsL1="2234331904" PortTxBpsL2="2150334464" PortTxPps="524984" PortRxFrames="524984" PortRxBpsL1="2234331904" PortRxBpsL2="2150334464" PortRxPps="524984" AvgLatency="68.7956666666667" MinLatency="5.032" MaxLatency="1686.607" AvgJitter="0.00633333333333333" MinJitter="0" MaxJitter="134.629" />
+        <Port ID="P-0-3-1" PortTxFrames="524984" PortTxBpsL1="2234331904" PortTxBpsL2="2150334464" PortTxPps="524984" PortRxFrames="524984" PortRxBpsL1="2234331904" PortRxBpsL2="2150334464" PortRxPps="524984" AvgLatency="66.112" MinLatency="4.92" MaxLatency="1441.77" AvgJitter="0.00566666666666667" MinJitter="0" MaxJitter="135.391" />
       </Result>
     </TestResult>
   </TestResults>
@@ -373,7 +373,7 @@
       <GenerateCsv>false</GenerateCsv>
       <SaveIntermediateResults>false</SaveIntermediateResults>
       <ReportFilename>xena2544-report</ReportFilename>
-      <AppendTimestamp>false</AppendTimestamp>
+      <AppendTimestamp>true</AppendTimestamp>
     </ReportConfig>
     <TidAllocationScope>ConfigScope</TidAllocationScope>
     <FormatVersion>10</FormatVersion>
