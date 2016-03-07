@@ -76,7 +76,7 @@ class Xena(object):
         self._params = {}
         self._xsocket = None
         self._duration = None
-        self._debug = debug
+        self.debug = debug
 
     @property
     def traffic_defaults(self):
@@ -111,9 +111,10 @@ class Xena(object):
         :return:
         """
         result_dict = OrderedDict()
-        # TODO get these parameters
-        # result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = ?
-        # result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = ?
+        result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = int(
+            root[0][1][0][1].get('PortRxPps'))
+        result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = int(
+            root[0][1][0][1].get('PortRxBpsL1')) / 1000
         result_dict[ResultsConstants.THROUGHPUT_RX_PERCENT] = (
             100 - int(root[0][1][0].get(
                     'TotalLossRatioPcnt'))) * float(root[0][1][0].get(
@@ -121,7 +122,7 @@ class Xena(object):
         result_dict[ResultsConstants.TX_RATE_FPS] = root[0][1][0].get(
                 'TotalTxRateFps')
         result_dict[ResultsConstants.TX_RATE_MBPS] = float(root[0][1][0].get(
-                'TotalTxRateBpsL2'))/1000
+                'TotalTxRateBpsL1'))/1000
         result_dict[ResultsConstants.TX_RATE_PERCENT] = root[0][1][0].get(
                 'TotalTxRatePcnt')
         result_dict[ResultsConstants.MIN_LATENCY_NS] = root[0][1][0][0].get(
@@ -182,14 +183,7 @@ class Xena(object):
             # layer 4 info
             proto = self._params['traffic']['l3']['proto']
 
-            # TODO Remove this. Debug for quicker testing.
-            trials = 1
-            self._duration = 2
-
-            # Read configuration file to variable
             xml = XMLConfig('./profiles/baseconfig.x2544')
-
-            # set XML data
             xml.trials = trials
             xml.duration = self._duration
             xml.loss_rate = loss_rate
@@ -381,7 +375,6 @@ class Xena(object):
         tx_stats = self._port0.get_tx_stats()
         rx_stats = self._port1.get_rx_stats()
 
-        # TODO need to implement multistream stat collection CT
         result_dict = OrderedDict()
         result_dict[ResultsConstants.TX_RATE_FPS] = tx_stats.data[
             tx_stats.time][tx_stats.pt_stream_keys[0]]['pps']
@@ -435,7 +428,6 @@ class Xena(object):
         tx_stats = self._port0.get_tx_stats()
         rx_stats = self._port1.get_rx_stats()
 
-        # TODO need to implement multistream stat collection CT
         result_dict = OrderedDict()
 
         result_dict[ResultsConstants.TX_RATE_FPS] = tx_stats.data[
@@ -488,7 +480,7 @@ class Xena(object):
         args = ["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e", "-r",
                 "./", "-u", TRAFFICGEN_USER]
         self.mono_pipe = subprocess.Popen(
-            args, stdout=sys.stdout if self._debug else subprocess.PIPE)
+            args, stdout=sys.stdout if self.debug else subprocess.PIPE)
         self.mono_pipe.communicate()
         root = ET.parse(r'./xena2544-report.xml').getroot()
         return Xena._create_throughput_result(root)
@@ -527,7 +519,7 @@ class Xena(object):
         args = ["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e", "-r",
                 "./", "-u", TRAFFICGEN_USER]
         self.mono_pipe = subprocess.Popen(
-            args, stdout=sys.stdout if self._debug else subprocess.PIPE)
+            args, stdout=sys.stdout if self.debug else subprocess.PIPE)
 
     def wait_rfc2544_throughput(self):
         """Wait for and return results of RFC2544 test.
@@ -577,7 +569,7 @@ class Xena(object):
         args = ["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e", "-r",
                 "./", "-u", TRAFFICGEN_USER]
         self.mono_pipe = subprocess.Popen(
-            args, stdout=sys.stdout if self._debug else subprocess.PIPE)
+            args, stdout=sys.stdout if self.debug else subprocess.PIPE)
         self.mono_pipe.communicate()
         root = ET.parse(r'./xena2544-report.xml').getroot()
         # TODO change this to the tuple per docstring
@@ -610,7 +602,7 @@ class Xena(object):
         args = ["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e", "-r",
                 "./", "-u", TRAFFICGEN_USER]
         self.mono_pipe = subprocess.Popen(
-            args, stdout=sys.stdout if self._debug else subprocess.PIPE)
+            args, stdout=sys.stdout if self.debug else subprocess.PIPE)
 
     def wait_rfc2544_back2back(self):
         """Wait and set results of RFC2544 test.
@@ -622,6 +614,7 @@ class Xena(object):
 
 
 if __name__ == "__main__":
+    import inspect
     print("Running Xena VSPerf script UnitTest")
     # XenaPythonLib logging
     debugOn = False
@@ -634,6 +627,39 @@ if __name__ == "__main__":
     result = dict()
     xena_obj = Xena(debug=True if debugOn else False)
 
+    class TestProps(object):
+        def __init__(self, framesize=None, test_duration=10, trials=1):
+            self.framesize = TRAFFIC_DEFAULTS['l2'][
+                'framesize'] if not framesize else framesize
+            self.framesizes = [64, 128, 256, 512, 1024]
+            self.duration = test_duration
+            self.trials = trials
+
+        def increase_framesize(self):
+            index = self.framesizes.index(self.framesize)
+            try:
+                self.framesize = self.framesizes[index + 1]
+            except IndexError:
+                self.framesize = self.framesizes[-1]
+
+        def decrease_framesize(self):
+            index = self.framesizes.index(self.framesize)
+            self.framesize = self.framesizes[index - 1] if index > 0 \
+                else self.framesizes[0]
+
+        def set_duration(self):
+            res = input("Enter a test time in seconds:")
+            self.duration = int(res)
+
+        def set_trials(self):
+            res = input("Enter number of trials:")
+            self.trials = int(res)
+
+    def toggledebug():
+        xena_obj.debug = False if xena_obj.debug else True
+
+    props = TestProps()
+
     testMethods = {
         1: [xena_obj.send_rfc2544_throughput],
         2: [xena_obj.start_rfc2544_throughput,
@@ -643,27 +669,56 @@ if __name__ == "__main__":
         5: [xena_obj.start_cont_traffic, xena_obj.stop_cont_traffic],
         6: [xena_obj.send_rfc2544_back2back],
         7: [xena_obj.start_rfc2544_back2back, xena_obj.wait_rfc2544_back2back],
-        8: [sys.exit]
+        8: [props.decrease_framesize],
+        9: [props.increase_framesize],
+        10: [props.set_duration],
+        11: [props.set_trials],
+        12: [toggledebug],
+        13: [sys.exit],
     }
 
-    print("What method to test?")
-    for k in sorted(testMethods.keys()):
-        line = "{}. ".format(k)
-        for f in testMethods[k]:
-            line += "{}/".format(f.__name__)
-        line = line.rstrip('/')
-        print(line)
-    ans = 0
-    while ans not in testMethods.keys():
-        ans = input("> ")
-        try:
-            if len(testMethods.keys()) >= int(ans) > 0:
-                break
-            else:
+    def go():
+        print("Packet size: {} | duration: {}".format(props.framesize,
+                                                      props.duration))
+        print("Trials for 2544 tests: {}".format(props.trials))
+        print("DEBUG is {}".format('ON' if xena_obj.debug else 'OFF'))
+        print("What method to test?")
+        for k in sorted(testMethods.keys()):
+            line = "{}. ".format(k)
+            for f in testMethods[k]:
+                line += "{}/".format(f.__name__)
+            line = line.rstrip('/')
+            print(line)
+        ans = 0
+        while ans not in testMethods.keys():
+            ans = input("> ")
+            try:
+                if len(testMethods.keys()) >= int(ans) > 0:
+                    break
+                else:
+                    print("!!Invalid entry!!")
+            except ValueError:
                 print("!!Invalid entry!!")
-        except ValueError:
-            print("!!Invalid entry!!")
 
-    for func in testMethods[int(ans)]:
-        result = func()
-    print(result)
+        for func in testMethods[int(ans)]:
+            if func.__name__ in xena_obj.__dir__():
+                kwargs = dict()
+                if 'traffic' in inspect.getargspec(func)[0]:
+                    params = {
+                        'l2': {
+                            'framesize': props.framesize,
+                        },
+                    }
+                    kwargs['traffic'] = params
+                if 'trials' in inspect.getargspec(func)[0]:
+                    kwargs['trials'] = props.trials
+                if 'duration' in inspect.getargspec(func)[0]:
+                    kwargs['duration'] = props.duration
+                result = func(**kwargs)
+                print(result)
+            else:
+                func()
+
+    while True:
+        go()
+
