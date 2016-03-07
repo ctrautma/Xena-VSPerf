@@ -396,6 +396,12 @@ class XenaPort(object):
         else:
             return False
 
+    def get_effective_speed(self):
+        port_speed = self.get_port_speed()
+        reduction = self.get_port_speed_reduction()
+        effective_speed = port_speed * (1.0 - reduction / 1000000.0)
+        return effective_speed
+
     def get_inter_frame_gap(self):
         """
         Get the interframe gap and return it as string
@@ -408,12 +414,13 @@ class XenaPort(object):
 
     def get_port_speed(self):
         """
-        Get the port speed from port and return it as a int.
+        Get the port speed as bits from port and return it as a int.
         :return: Int of port speed
         """
         command = make_port_command(CMD_GET_PORT_SPEED, self)
         res = self._manager.driver.ask(command).decode('utf-8')
-        return res
+        port_speed = res.split(' ')[-1].rstrip('\n')
+        return int(port_speed) * 1000000
 
     def get_port_speed_reduction(self):
         """
@@ -618,6 +625,7 @@ class XenaRXStats(object):
         self._stats = stats
         self._time = epoc
         self.data = self.parse_stats()
+        self.preamble = 8
 
     def _pack_stats(self, param, start, fields=None):
         """ Pack up the list of stats in a dictionary
@@ -777,6 +785,7 @@ class XenaTXStats(object):
         self._time = epoc
         self._ptstreamkeys = list()
         self.data = self.parse_stats()
+        self.preamble = 8
 
     def _pack_stats(self, params, start, fields=None):
         """ Pack up the list of stats in a dictionary
@@ -844,6 +853,39 @@ class XenaTXStats(object):
         return mydict
 
 
+def packets_per_second(packets, duration):
+    """
+    Return the pps as float
+    :param packets: total packets
+    :param duration: time in seconds
+    :return: float of pps
+    """
+    return packets / duration
+
+
+def l2_bit_rate(packet_size, preamble, pps):
+    """
+    Return the l2 bit rate
+    :param packet_size: packet size on the line in bytes
+    :param preamble: preamble size of the packet header in bytes
+    :param pps: packets per second
+    :return: l2 bit rate as float
+    """
+    return (packet_size * preamble) * pps
+
+
+def l1_bit_rate(l2br, pps, ifg, preamble):
+    """
+    Return the l1 bit rate
+    :param l2br: l2 bit rate int bits per second
+    :param pps: packets per second
+    :param ifg: the inter frame gap
+    :param preamble: preamble size of the packet header in bytes
+    :return: l1 bit rate as float
+    """
+    return l2br + (pps * ifg * preamble)
+
+
 def make_manager_command(cmd, argument):
     """ String builder for Xena socket commands
 
@@ -882,7 +924,8 @@ def make_stream_command(cmd, args, xenaStream):
 
 
 if __name__ == '__main__':
-    packetsize = 1024
+    packetsize = 64
+    duration = 10
     driver = XenaSocketDriver('10.19.15.19')
     xm = XenaManager(driver, 'vsperf', 'xena')
     port0 = xm.add_module_port(3, 0)
@@ -892,8 +935,6 @@ if __name__ == '__main__':
     port0.reset_port()
     port1.reset_port()
     p0s0 = port0.add_stream()
-    print(port1.get_port_speed_reduction())
-    print(port1.get_port_speed())
     p0s0.set_on()
     p0s0.set_packet_header('0x525400c61020525400c61010080045000014000100004' +
                            '00066e70a0000010a000002')
@@ -902,7 +943,7 @@ if __name__ == '__main__':
     p0s0.set_packet_limit(-1)
     p0s0.set_rate_fraction(1000000)
     p0s0.set_payload_id(0)
-    port0.set_port_time_limit(1000000 * 10)
+    port0.set_port_time_limit(1000000 * duration)
     port0.clear_stats()
     port1.clear_stats()
     port0.traffic_on()
@@ -912,11 +953,19 @@ if __name__ == '__main__':
     rxstat = port1.get_rx_stats()
     print(txstat.data)
     print(rxstat.data)
-    rxpps = rxstat.data[rxstat.time]['pr_total']['packets'] / 10
-    l2br = (packetsize * 8) * rxpps
-    l1br = l2br + (rxpps * 20 * 8)
-    print("RXl1BR: {}".format(l1br))
-    txpps = txstat.data[txstat.time]['pt_total']['packets'] / 10
-    l2br = (packetsize * 8) * txpps
-    l1br = l2br + (txpps * 20 * 8)
-    print ("TXl1BR: {}".format(l1br))
+    gap = port0.get_inter_frame_gap()
+    rxpps = packets_per_second(rxstat.data[rxstat.time]['pr_total']['packets'],
+                               duration)
+    l2rxbr = l2_bit_rate(packetsize, rxstat.preamble, rxpps)
+    l1rxbr = l1_bit_rate(l2rxbr, rxpps, gap, rxstat.preamble)
+    print("RXl1BR: {}".format(l1rxbr))
+    txpps = packets_per_second(txstat.data[txstat.time]['pt_total']['packets'],
+                               duration)
+    l2txbr = l2_bit_rate(packetsize, txstat.preamble, txpps)
+    l1txbr = l1_bit_rate(l2txbr, txpps, gap, txstat.preamble)
+    print("TXl1BR: {}".format(l1txbr))
+    print("RXPercentage = {}".format(
+        100.0 * l1rxbr / port0.get_effective_speed()))
+    print("TXPercentage = {}".format(
+        100.0 * l1txbr / port1.get_effective_speed()))
+
