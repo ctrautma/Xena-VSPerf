@@ -853,14 +853,30 @@ class XenaTXStats(object):
         return mydict
 
 
-def packets_per_second(packets, duration):
+def line_percentage(port, stats, duration, packet_size):
     """
-    Return the pps as float
-    :param packets: total packets
-    :param duration: time in seconds
-    :return: float of pps
+    Calculate the line percentage rate from the duration, port object and stat
+    object.
+    :param port: XenaPort object
+    :param stats: Xena RXStat or TXStat object
+    :param duration: time the stream was active
+    :return: line percentage as float
     """
-    return packets / duration
+    # this is ugly, but its prettier than calling the get method 3 times...
+    try:
+        packets = stats.data[stats.time]['pr_total']['packets']
+    except KeyError:
+        try:
+            packets = stats.data[stats.time]['pt_total']['packets']
+        except KeyError:
+            _logger.error(
+                'Could not calculate line rate because packet stat not found.')
+            return 0
+    ifg = port.get_inter_frame_gap()
+    pps = packets_per_second(packets, duration)
+    l2br = l2_bit_rate(packet_size, stats.preamble, pps)
+    l1br = l1_bit_rate(l2br, pps, ifg, stats.preamble)
+    return 100.0 * l1br / port.get_effective_speed()
 
 
 def l2_bit_rate(packet_size, preamble, pps):
@@ -923,7 +939,18 @@ def make_stream_command(cmd, args, xenaStream):
     return command
 
 
+def packets_per_second(packets, duration):
+    """
+    Return the pps as float
+    :param packets: total packets
+    :param duration: time in seconds
+    :return: float of pps
+    """
+    return packets / duration
+
+
 if __name__ == '__main__':
+    print("Running XenaDriver UnitTest")
     packetsize = 64
     duration = 10
     driver = XenaSocketDriver('10.19.15.19')
@@ -947,25 +974,26 @@ if __name__ == '__main__':
     port0.clear_stats()
     port1.clear_stats()
     port0.traffic_on()
-    time.sleep(11)
+    time.sleep(duration + 1)
     port0.traffic_off()
     txstat = port0.get_tx_stats()
     rxstat = port1.get_rx_stats()
     print(txstat.data)
     print(rxstat.data)
-    gap = port0.get_inter_frame_gap()
+    gap = port1.get_inter_frame_gap()
     rxpps = packets_per_second(rxstat.data[rxstat.time]['pr_total']['packets'],
                                duration)
     l2rxbr = l2_bit_rate(packetsize, rxstat.preamble, rxpps)
     l1rxbr = l1_bit_rate(l2rxbr, rxpps, gap, rxstat.preamble)
     print("RXl1BR: {}".format(l1rxbr))
+    gap = port0.get_inter_frame_gap()
     txpps = packets_per_second(txstat.data[txstat.time]['pt_total']['packets'],
                                duration)
     l2txbr = l2_bit_rate(packetsize, txstat.preamble, txpps)
     l1txbr = l1_bit_rate(l2txbr, txpps, gap, txstat.preamble)
     print("TXl1BR: {}".format(l1txbr))
-    print("RXPercentage = {}".format(
-        100.0 * l1rxbr / port0.get_effective_speed()))
-    print("TXPercentage = {}".format(
-        100.0 * l1txbr / port1.get_effective_speed()))
+    print("RXPercentage = {}".format(line_percentage(port1, rxstat, duration,
+                                                     packetsize)))
+    print("TXPercentage = {}".format(line_percentage(port0, txstat, duration,
+                                                     packetsize)))
 
