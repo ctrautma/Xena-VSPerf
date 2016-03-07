@@ -17,6 +17,7 @@
 import base64
 import json
 import logging
+import uuid
 
 import scapy.layers.inet as inet
 
@@ -96,13 +97,13 @@ class XMLConfig(object):
 
             d = {"SegmentType": "ETHERNET",
                  "SegmentValue": value,
-                 "ItemID": "bdf7bd1c-4634-4fb5-909b-6200237e2647",
+                 "ItemID": str(uuid.uuid4()),
                  "ParentID": "",
                  "Label": ""}
             self.segment1.append(d)
             d = {"SegmentType": "ETHERNET",
                  "SegmentValue": opp_value,
-                 "ItemID": "6cb89923-61aa-4717-a3c0-20a8ad3356bf",
+                 "ItemID": str(uuid.uuid4()),
                  "ParentID": "",
                  "Label": ""}
             self.segment2.append(d)
@@ -114,11 +115,11 @@ class XMLConfig(object):
             value = value.decode('utf-8')
             d = {"SegmentType": "VLAN",
                  "SegmentValue": value,
-                 "ItemID": "51af8770-99c4-4824-885d-990258e2a890",
+                 "ItemID": str(uuid.uuid4()),
                  "ParentID": "",
                  "Label": ""}
             self.segment1.append(d)
-            d['ItemID'] = "3e49313c-20a5-42be-becf-6915aec64bda"
+            d['ItemID'] = str(uuid.uuid4())
             self.segment2.append(d)
             header_pos += len(self.vlan)
         if self.l3:
@@ -134,13 +135,13 @@ class XMLConfig(object):
 
             d = {"SegmentType": "IP",
                  "SegmentValue": value,
-                 "ItemID": "1f67026e-0a83-462f-9c43-dd3661754167",
+                 "ItemID": str(uuid.uuid4()),
                  "ParentID": "",
                  "Label": ""}
             self.segment1.append(d)
             d = {"SegmentType": "IP",
                  "SegmentValue": opp_value,
-                 "ItemID": "fe797ed1-f29b-4050-85d4-db5ef4f08f2d",
+                 "ItemID": str(uuid.uuid4()),
                  "ParentID": "",
                  "Label": ""}
             self.segment2.append(d)
@@ -271,7 +272,7 @@ class XMLConfig(object):
         self.file_data['TestOptions']['TestTypeOptionMap']['Throughput'][
             'RateIterationOptions']['AcceptableLoss'] = self.loss_rate
         self.file_data['TestOptions']['FlowCreationOptions'][
-            'UseMicroTpldOnDemand'] == 'true' if self.microTPLD else 'false'
+            'UseMicroTpldOnDemand'] = 'true' if self.microTPLD else 'false'
         self.file_data['PortHandler']['EntityList'][0]['PortRef'][
             'ModuleIndex'] = self.module1
         self.file_data['PortHandler']['EntityList'][1]['PortRef'][
