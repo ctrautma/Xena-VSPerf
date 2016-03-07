@@ -68,7 +68,7 @@ class Xena(object):
     _traffic_defaults = TRAFFIC_DEFAULTS.copy()
     _logger = logging.getLogger(__name__)
 
-    def __init__(self):
+    def __init__(self, debug=False):
         self.mono_pipe = None
         self.xm = None
         self._port0 = None
@@ -76,6 +76,7 @@ class Xena(object):
         self._params = {}
         self._xsocket = None
         self._duration = None
+        self._debug = debug
 
     @property
     def traffic_defaults(self):
@@ -132,7 +133,7 @@ class Xena(object):
 
         return result_dict
 
-    def _build_test_packet(self):
+    def _build_packet_header(self):
         """
         Build a packet header based on traffic profile using scapy external
         libraries.
@@ -183,7 +184,7 @@ class Xena(object):
 
             # TODO Remove this. Debug for quicker testing.
             trials = 1
-            duration = 5
+            self._duration = 2
 
             # Read configuration file to variable
             xml = XMLConfig('./profiles/baseconfig.x2544')
@@ -203,12 +204,15 @@ class Xena(object):
                                         protocol=proto)
             if self._params['traffic']['vlan']['enabled']:
                 xml.build_vlan_header(vlan_id=vlanid, id=vlancfi, prio=vlanpri)
+                # need micro payloads if packet size 64 and vlan enabled
+                if self._params['traffic']['l2']['framesize'] == 64:
+                    xml.microTPLD = True
 
             xml.add_header_segments()
             xml.write_config()
             xml.write_file('./2bUsed.x2544')
         except Exception as e:
-            self._logger("Error during Xena XML setup: {}".format(e))
+            self._logger.exception("Error during Xena XML setup: {}".format(e))
             raise
 
     def _start_traffic_api(self, packet_limit):
@@ -247,7 +251,7 @@ class Xena(object):
         s1_p0.set_packet_limit(packet_limit)
 
         s1_p0.set_rate_fraction(1000000)
-        s1_p0.set_packet_header(self._build_test_packet())
+        s1_p0.set_packet_header(self._build_packet_header())
         # TODO Fix the below line to adapt better to the self._params
         s1_p0.set_header_protocol('ETHERNET VLAN IP' if self._params['traffic'][
             'vlan']['enabled'] else 'ETHERNET IP')
@@ -276,7 +280,6 @@ class Xena(object):
         :returns: None
         """
         self._xsocket = XenaDriver.XenaSocketDriver(TRAFFICGEN_IP)
-        # create the manager session
         self.xm = XenaDriver.XenaManager(self._xsocket, TRAFFICGEN_USER,
                                          TRAFFICGEN_PASSWORD)
 
@@ -484,7 +487,9 @@ class Xena(object):
 
         args = ["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e", "-r",
                 "./", "-u", TRAFFICGEN_USER]
-        subprocess.call(args)
+        self.mono_pipe = subprocess.Popen(
+            args, stdout=sys.stdout if self._debug else subprocess.PIPE)
+        self.mono_pipe.communicate()
         root = ET.parse(r'./xena2544-report.xml').getroot()
         return Xena._create_throughput_result(root)
 
@@ -521,13 +526,14 @@ class Xena(object):
 
         args = ["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e", "-r",
                 "./", "-u", TRAFFICGEN_USER]
-        self.mono_pipe = subprocess.Popen(args)
+        self.mono_pipe = subprocess.Popen(
+            args, stdout=sys.stdout if self._debug else subprocess.PIPE)
 
     def wait_rfc2544_throughput(self):
         """Wait for and return results of RFC2544 test.
         """
-        self.mono_pipe.communicate()[0]
-        root = ET.parse(r'./xena2544-report.xml').getroot()
+        self.mono_pipe.communicate()
+        root = ET.parse(r'./xesna2544-report.xml').getroot()
         return Xena._create_throughput_result(root)
 
     def send_rfc2544_back2back(self, traffic=None, trials=1, duration=20,
@@ -570,7 +576,9 @@ class Xena(object):
 
         args = ["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e", "-r",
                 "./", "-u", TRAFFICGEN_USER]
-        subprocess.call(args)
+        self.mono_pipe = subprocess.Popen(
+            args, stdout=sys.stdout if self._debug else subprocess.PIPE)
+        self.mono_pipe.communicate()
         root = ET.parse(r'./xena2544-report.xml').getroot()
         # TODO change this to the tuple per docstring
         return Xena._create_throughput_result(root)
@@ -601,12 +609,13 @@ class Xena(object):
 
         args = ["mono", "./Xena2544.exe", "-c", "./2bUsed.x2544", "-e", "-r",
                 "./", "-u", TRAFFICGEN_USER]
-        self.mono_pipe = subprocess.Popen(args)
+        self.mono_pipe = subprocess.Popen(
+            args, stdout=sys.stdout if self._debug else subprocess.PIPE)
 
     def wait_rfc2544_back2back(self):
         """Wait and set results of RFC2544 test.
         """
-        pause = self.mono_pipe.communicate()[0]
+        self.mono_pipe.communicate()
         root = ET.parse(r'./xena2544-report.xml').getroot()
         # TODO change per docstring tuple specifications
         return Xena._create_throughput_result(root)
@@ -623,7 +632,7 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.INFO)
 
     result = dict()
-    xena_obj = Xena()
+    xena_obj = Xena(debug=True if debugOn else False)
 
     testMethods = {
         1: [xena_obj.send_rfc2544_throughput],
@@ -632,7 +641,9 @@ if __name__ == "__main__":
         3: [xena_obj.send_burst_traffic],
         4: [xena_obj.send_cont_traffic],
         5: [xena_obj.start_cont_traffic, xena_obj.stop_cont_traffic],
-        6: [sys.exit]
+        6: [xena_obj.send_rfc2544_back2back],
+        7: [xena_obj.start_rfc2544_back2back, xena_obj.wait_rfc2544_back2back],
+        8: [sys.exit]
     }
 
     print("What method to test?")
