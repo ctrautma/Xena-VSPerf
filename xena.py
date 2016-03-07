@@ -39,6 +39,7 @@ from collections import OrderedDict
 
 # XenaDriver
 import XenaDriver
+from XenaDriver import line_percentage
 from XenaXML import XMLConfig
 
 # scapy imports
@@ -74,6 +75,7 @@ class Xena(object):
         self._port1 = None
         self._params = {}
         self._xsocket = None
+        self._duration = None
 
     @property
     def traffic_defaults(self):
@@ -103,29 +105,6 @@ class Xena(object):
         self.disconnect()
 
     @staticmethod
-    def build_test_packet():
-        """
-        Build a packet header based on traffic profile using scapy external
-        libraries.
-        """
-        l2 = inet.Ether(src=TRAFFIC_DEFAULTS['l2']['srcmac'],
-                        dst=TRAFFIC_DEFAULTS['l2']['dstmac'])
-        l3 = inet.IP(src=TRAFFIC_DEFAULTS['l3']['srcip'],
-                     dst=TRAFFIC_DEFAULTS['l3']['dstip'],
-                     proto=TRAFFIC_DEFAULTS['l3']['proto'])
-        if TRAFFIC_DEFAULTS['vlan']['enabled']:
-            vlan = inet.Dot1Q(vlan=TRAFFIC_DEFAULTS['vlan']['id'],
-                              prio=TRAFFIC_DEFAULTS['vlan']['priority'],
-                              id=TRAFFIC_DEFAULTS['vlan']['cfi'])
-        else:
-            vlan = None
-        packet = l2/vlan/l3 if vlan else l2/l3
-        packet_bytes = bytes(packet)
-        packet_hex = '0x' + binascii.hexlify(packet_bytes).decode('utf-8')
-        return packet_hex
-        # TODO VLANS doesn't seem to work yet..
-
-    @staticmethod
     def _create_throughput_result(root):
         """
         :return:
@@ -153,8 +132,39 @@ class Xena(object):
 
         return result_dict
 
-    def _setup_xml_config(self, trials, duration, loss_rate, testtype=None,
+    def _build_test_packet(self):
+        """
+        Build a packet header based on traffic profile using scapy external
+        libraries.
+        :return: packet header in hex
+        """
+        l2 = inet.Ether(src=self._params['traffic']['l2']['srcmac'],
+                        dst=self._params['traffic']['l2']['dstmac'])
+        l3 = inet.IP(src=self._params['traffic']['l3']['srcip'],
+                     dst=self._params['traffic']['l3']['dstip'],
+                     proto=self._params['traffic']['l3']['proto'])
+        if self._params['traffic']['vlan']['enabled']:
+            vlan = inet.Dot1Q(vlan=self._params['traffic']['vlan']['id'],
+                              prio=self._params['traffic']['vlan']['priority'],
+                              id=self._params['traffic']['vlan']['cfi'])
+        else:
+            vlan = None
+        packet = l2/vlan/l3 if vlan else l2/l3
+        packet_bytes = bytes(packet)
+        packet_hex = '0x' + binascii.hexlify(packet_bytes).decode('utf-8')
+        return packet_hex
+        # TODO VLANS doesn't seem to work yet..
+
+    def _setup_xml_config(self, trials, loss_rate, testtype=None,
                           multi_stream=None):
+        """
+        Create a 2bUsed xml file that will be used for xena2544.exe execution.
+        :param trials: Number of trials
+        :param loss_rate: The acceptable loss rate as float
+        :param testtype: Either '2544_b2b' or '2544_throughput' as string
+        :param multi_stream: This is changing, do not use
+        :return: None
+        """
         try:
             # layer 2 info
             framesize = self._params['traffic']['l2']['framesize']
@@ -180,7 +190,7 @@ class Xena(object):
 
             # set XML data
             xml.trials = trials
-            xml.duration = duration
+            xml.duration = self._duration
             xml.loss_rate = loss_rate
             xml.custom_packet_sizes = [framesize]
             xml.throughput_enable = (True if testtype == '2544_throughput'
@@ -200,6 +210,58 @@ class Xena(object):
         except Exception as e:
             self._logger("Error during Xena XML setup: {}".format(e))
             raise
+
+    def _start_traffic_api(self, packet_limit):
+        """
+        Start the Xena traffic using the socket API driver
+        :param packet_limit: packet limit for stream, set to -1 for no limit
+        :return: None
+        """
+        if not self.xm:
+            self.connect()
+
+        if not self._port0:
+            self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1,
+                                                  TRAFFICGEN_PORT1)
+            if not self._port0:
+                self._logger.error("Fail to add port " + str(TRAFFICGEN_PORT1))
+                sys.exit(-1)
+            self._port0.reserve_port()
+
+        if not self._port1:
+            self._port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2,
+                                                  TRAFFICGEN_PORT2)
+            if not self._port1:
+                self._logger.error("Fail to add port" + str(TRAFFICGEN_PORT2))
+                sys.exit(-1)
+            self._port1.reserve_port()
+
+        # Clear port configuration for a clean start
+        self._port0.reset_port()
+        self._port1.reset_port()
+        self._port0.clear_stats()
+        self._port1.clear_stats()
+
+        s1_p0 = self._port0.add_stream()
+        s1_p0.set_on()
+        s1_p0.set_packet_limit(packet_limit)
+
+        s1_p0.set_rate_fraction(1000000)
+        s1_p0.set_packet_header(self._build_test_packet())
+        # TODO Fix the below line to adapt better to the self._params
+        s1_p0.set_header_protocol('ETHERNET VLAN IP' if self._params['traffic'][
+            'vlan']['enabled'] else 'ETHERNET IP')
+        s1_p0.set_packet_length(
+                'fixed', self._params['traffic']['l2']['framesize'], 16383)
+        s1_p0.set_packet_payload('incrementing', '0x00')
+        s1_p0.set_payload_id(0)
+
+        self._port0.set_port_time_limit(self._duration * 1000000)
+
+        if not self._port0.traffic_on():
+            self._logger.error(
+                    "Failure to start traffic. Check settings and retry.")
+        Time.sleep(self._duration + 1)
 
     def connect(self):
         """Connect to the traffic generator.
@@ -248,6 +310,7 @@ class Xena(object):
             - List of List of Rx Bytes,
             - Payload Errors and Sequence Errors.
         """
+        self._duration = duration
 
         self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
@@ -255,54 +318,7 @@ class Xena(object):
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
 
-        if not self.xm:
-            self.connect()
-
-        if not self._port0:
-            self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1,
-                                                  TRAFFICGEN_PORT1)
-            if not self._port0:
-                self._logger.error("Fail to add port " + str(TRAFFICGEN_PORT1))
-                sys.exit(-1)
-            self._port0.reserve_port()
-
-        if not self._port1:
-            self._port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2,
-                                                  TRAFFICGEN_PORT2)
-            if not self._port1:
-                self._logger.error("Fail to add port" + str(TRAFFICGEN_PORT2))
-                sys.exit(-1)
-            self._port1.reserve_port()
-
-        # Clear port configuration for a clean start
-        self._port0.reset_port()
-        self._port1.reset_port()
-
-        # Add one stream for port 0
-        s1_p0 = self._port0.add_stream()
-        s1_p0.set_on()
-
-        # setup stream params
-        s1_p0.set_packet_header(self.build_test_packet())
-        s1_p0.set_header_protocol('ETHERNET VLAN IP')
-        s1_p0.set_packet_length(
-                'fixed', self._params['traffic']['l2']['framesize'], 16383)
-        s1_p0.set_packet_payload('incrementing', '0x00')
-        s1_p0.set_packet_limit(numpkts)
-        s1_p0.set_rate_fraction(1000000)
-        # PS_RATEPPS [SID] PPS if fps
-        s1_p0.set_payload_id(0)
-        self._port0.set_port_time_limit(duration * 1000000)  # automatic stop
-
-        self._port0.clear_stats()
-        self._port1.clear_stats()
-
-        # start/[wait]/stop the traffic
-        if not self._port0.traffic_on():
-            self._logger.error(
-                    "Failure to start traffic. Check settings and retry.")
-            sys.exit(1)
-        Time.sleep(duration + 1)
+        self._start_traffic_api(numpkts)
         self._port0.traffic_off()
 
         # getting results
@@ -348,59 +364,15 @@ class Xena(object):
             - Max Latency (ns),
             - Avg Latency (ns)
         """
+        self._duration = duration
+
         self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
         if traffic:
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
 
-        if not self.xm:
-            self.connect()
-
-        if not self._port0:
-            self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1,
-                                                  TRAFFICGEN_PORT1)
-            if not self._port0:
-                self._logger.error("Fail to add port " + str(TRAFFICGEN_PORT1))
-                sys.exit(-1)
-            self._port0.reserve_port()
-
-        if not self._port1:
-            self._port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2,
-                                                  TRAFFICGEN_PORT2)
-            if not self._port1:
-                self._logger.error("Fail to add port" + str(TRAFFICGEN_PORT2))
-                sys.exit(-1)
-            self._port1.reserve_port()
-
-        # Clear port configuration for a clean start
-        self._port0.reset_port()
-        self._port1.reset_port()
-        self._port0.clear_stats()
-        self._port1.clear_stats()
-
-        s1_p0 = self._port0.add_stream()
-        s1_p0.set_on()
-        s1_p0.set_packet_limit(-1)  # for continuous flow
-
-        s1_p0.set_rate_fraction(1000000)
-        s1_p0.set_packet_header(self.build_test_packet())
-        # TODO Fix the below line to adapt better to the self._params
-        s1_p0.set_header_protocol('ETHERNET VLAN IP' if self._params['traffic'][
-            'vlan']['enabled'] else 'ETHERNET IP')
-        s1_p0.set_packet_length(
-                'fixed', self._params['traffic']['l2']['framesize'], 16383)
-        s1_p0.set_packet_payload('incrementing', '0x00')
-        s1_p0.set_payload_id(0)
-
-        self._port0.set_port_time_limit(duration*1000000)  # automatic stop
-
-        # start the traffic
-        if not self._port0.traffic_on():
-            self._logger.error(
-                    "Failure to start traffic. Check settings and retry.")
-            sys.exit(1)
-        Time.sleep(duration + 1)
+        self._start_traffic_api(-1)
 
         # getting results
         tx_stats = self._port0.get_tx_stats()
@@ -416,17 +388,12 @@ class Xena(object):
             tx_stats.time][tx_stats.pt_stream_keys[0]]['bps'] * 1000
         result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = rx_stats.data[
             rx_stats.time]['pr_tpldstraffic']['0']['bps'] * 1000
-
-        # TODO: Find port speed and % linerate out of it (based on framesize)
-        # PT_STREAM [SID] BPS PPS BYTES PACKETS
-        # PT_STREAM [SID] ?
-        # PR_TPLDTRAFFIC [TID] ?
-        # bitrateL1 = bitRateL2 + frameRate * interFrameGap * 8;
-        # The bitRateL2 – is the L1bits of the packets(FPS*PacketSize) the frameRate * InterFrameGap * 8
-        # Is the completingL1 of the IFG`s (the way we refer to it…it includes the preamble as well).
-        # result['Tx Throughput % linerate'] = tx_stats[pt_stream_0][0]
-        # result['Rx Throughput % linerate'] = rx_stats[pr_tpldstraffic][0][0]
-
+        result_dict[ResultsConstants.TX_RATE_PERCENT] = line_percentage(
+            self._port0, tx_stats, self._duration,
+            self._params['traffic']['l2']['framesize'])
+        result_dict[ResultsConstants.THROUGHPUT_RX_PERCENT] = line_percentage(
+            self._port1, rx_stats, self._duration,
+            self._params['traffic']['l2']['framesize'])
         result_dict[ResultsConstants.MIN_LATENCY_NS] = rx_stats.data[
             rx_stats.time]['pr_tpldlatency']['0']['min']
         result_dict[ResultsConstants.MAX_LATENCY_NS] = rx_stats.data[
@@ -444,6 +411,7 @@ class Xena(object):
         :param traffic: Detailed "traffic" spec, i.e. IP address, VLAN tags
         :param duration: Time to wait to receive packets (secs)
         """
+        self._duration = duration
 
         self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
@@ -451,53 +419,7 @@ class Xena(object):
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
 
-        if not self.xm:
-            self.connect()
-
-        if not self._port0:
-            self._port0 = self.xm.add_module_port(TRAFFICGEN_MODULE1,
-                                              TRAFFICGEN_PORT1)
-            if not self._port0:
-                self._logger.error("Fail to add port " + str(TRAFFICGEN_PORT1))
-                sys.exit(-1)
-            self._port0.reserve_port()
-
-        if not self._port1:
-            self._port1 = self.xm.add_module_port(TRAFFICGEN_MODULE2,
-                                                  TRAFFICGEN_PORT2)
-            if not self._port1:
-                self._logger.error("Fail to add port" + str(TRAFFICGEN_PORT2))
-                sys.exit(-1)
-            self._port1.reserve_port()
-
-        # Clear port configuration for a clean start
-        self._port0.reset_port()
-        self._port1.reset_port()
-
-        s1_p0 = self._port0.add_stream()
-        s1_p0.set_on()
-        s1_p0.set_packet_limit(-1)  # for continues flow
-
-        s1_p0.set_rate_fraction(1000000)
-        self._port0.set_port_time_limit(duration * 1000000)
-        s1_p0.set_packet_header(self.build_test_packet())
-        # TODO Fix the below line to adapt better to the self._params
-        s1_p0.set_header_protocol('ETHERNET VLAN IP' if self._params['traffic'][
-            'vlan']['enabled'] else 'ETHERNET IP')
-        s1_p0.set_packet_length(
-                'fixed', self._params['traffic']['l2']['framesize'], 16383)
-        s1_p0.set_packet_payload('incrementing', '0x00')
-
-        s1_p0.set_payload_id(0)
-
-        self._port0.clear_stats()
-        self._port1.clear_stats()
-
-        # start the traffic and return
-        if not self._port0.traffic_on():
-            self._logger.error(
-                    "Failure to start traffic. Check settings and retry.")
-            sys.exit(1)
+        self._start_traffic_api(-1)
 
     def stop_cont_traffic(self):
         """Stop continuous transmission and return results.
@@ -521,11 +443,12 @@ class Xena(object):
             tx_stats.time][tx_stats.pt_stream_keys[0]]['bps'] * 1000
         result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = rx_stats.data[
             rx_stats.time]['pr_tpldstraffic']['0']['bps'] * 1000
-
-        # TODO: Find port speed and % linerate out of it (based on framesize)
-        # result['Tx Throughput % linerate'] = tx_stats[pt_stream_0][0]
-        # result['Rx Throughput % linerate'] = rx_stats[pr_tpldstraffic][0][0]
-
+        result_dict[ResultsConstants.TX_RATE_PERCENT] = line_percentage(
+            self._port0, tx_stats, self._duration,
+            self._params['traffic']['l2']['framesize'])
+        result_dict[ResultsConstants.THROUGHPUT_RX_PERCENT] = line_percentage(
+            self._port1, rx_stats, self._duration,
+            self._params['traffic']['l2']['framesize'])
         result_dict[ResultsConstants.MIN_LATENCY_NS] = rx_stats.data[
             rx_stats.time]['pr_tpldlatency']['0']['min']
         result_dict[ResultsConstants.MAX_LATENCY_NS] = rx_stats.data[
@@ -537,6 +460,7 @@ class Xena(object):
 
     def send_rfc2544_throughput(self, traffic=None, trials=3, duration=20,
                                 lossrate=0.0, multistream=False):
+        self._duration = duration
 
         self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
@@ -544,8 +468,7 @@ class Xena(object):
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
 
-        self._setup_xml_config(trials, duration, lossrate, '2544_throughput',
-                               multistream)
+        self._setup_xml_config(trials, lossrate, '2544_throughput', multistream)
 
         """
         :param multistream: Enable multistream output by overriding the UDP port
@@ -576,14 +499,14 @@ class Xena(object):
         :param duration: Per iteration duration
         :param lossrate: Acceptable lossrate percentage
         """
-
+        self._duration = duration
         self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
         if traffic:
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
 
-        self._setup_xml_config(trials, duration, lossrate, '2544_throughput')
+        self._setup_xml_config(trials, lossrate, '2544_throughput')
         """
         :param multistream: Enable multistream output by overriding the UDP port
         number in ``traffic`` with values from 1 to 64,000
@@ -628,6 +551,7 @@ class Xena(object):
             Back to Back Count (frames), Frame Loss (frames), Frame Loss (%)
         :rtype: :class:`Back2BackResult`
         """
+        self._duration = duration
 
         self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
@@ -635,12 +559,7 @@ class Xena(object):
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
 
-        self._setup_xml_config(trials, duration, lossrate, '2544_b2b')
-
-        """
-        :param multistream: Enable multistream output by overriding the UDP port
-        number in ``traffic`` with values from 1 to 64,000
-        """
+        self._setup_xml_config(trials, lossrate, '2544_b2b')
 
         # if multistream=='enabled':
         #    for guid in x2544_Configuration[
@@ -663,6 +582,7 @@ class Xena(object):
         Start transmission and immediately return. Do not wait for
         results.
         """
+        self._duration = duration
 
         self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
@@ -670,11 +590,7 @@ class Xena(object):
             self._params['traffic'] = merge_spec(
                     self._params['traffic'], traffic)
 
-        self._setup_xml_config(trials, duration, lossrate, '2544_b2b')
-        """
-        :param multistream: Enable multistream output by overriding the UDP port
-        number in ``traffic`` with values from 1 to 64,000
-        """
+        self._setup_xml_config(trials, lossrate, '2544_b2b')
 
         # if multistream=='enabled':
         #    for guid in x2544_Configuration[
@@ -690,13 +606,14 @@ class Xena(object):
     def wait_rfc2544_back2back(self):
         """Wait and set results of RFC2544 test.
         """
-        self.mono_pipe.communicate()[0]
+        pause = self.mono_pipe.communicate()[0]
         root = ET.parse(r'./xena2544-report.xml').getroot()
         # TODO change per docstring tuple specifications
         return Xena._create_throughput_result(root)
 
 
 if __name__ == "__main__":
+    print("Running Xena VSPerf script UnitTest")
     # XenaPythonLib logging
     debugOn = False
     for debugs in sys.argv:
@@ -707,49 +624,35 @@ if __name__ == "__main__":
 
     result = dict()
     xena_obj = Xena()
+
+    testMethods = {
+        1: [xena_obj.send_rfc2544_throughput],
+        2: [xena_obj.start_rfc2544_throughput,
+            xena_obj.wait_rfc2544_throughput],
+        3: [xena_obj.send_burst_traffic],
+        4: [xena_obj.send_cont_traffic],
+        5: [xena_obj.start_cont_traffic, xena_obj.stop_cont_traffic],
+        6: [sys.exit]
+    }
+
     print("What method to test?")
-    print("1. send_rfc2544_throughput")
-    print("2. start/stop rfc2544 throughput")
-    print("3. send_burst_traffic")
-    print("4. send_cont_traffic/stop_cont_traffic")
-    print("5. Perform each in order.")
-    print("6. Quit")
+    for k in sorted(testMethods.keys()):
+        line = "{}. ".format(k)
+        for f in testMethods[k]:
+            line += "{}/".format(f.__name__)
+        line = line.rstrip('/')
+        print(line)
     ans = 0
-    while ans not in ('1', '2', '3', '4'):
+    while ans not in testMethods.keys():
         ans = input("> ")
         try:
-            if 6 > int(ans) > 0:
+            if len(testMethods.keys()) >= int(ans) > 0:
                 break
             else:
                 print("!!Invalid entry!!")
-        except TypeError:
+        except ValueError:
             print("!!Invalid entry!!")
-    if ans == '1':
-        result = xena_obj.send_rfc2544_throughput()
-    elif ans == '2':
-        xena_obj.start_rfc2544_throughput()
-        Time.sleep(2)
-        xena_obj.wait_rfc2544_throughput()
-    elif ans == '3':
-        result = xena_obj.send_burst_traffic()
-    elif ans == '4':
-        xena_obj.start_cont_traffic()
-        Time.sleep(5)
-        result = xena_obj.stop_cont_traffic()
-    elif ans == '5':
-        result = xena_obj.send_rfc2544_throughput()
-        for key in result.keys():
-            print(key, result[key])
-        result = xena_obj.send_burst_traffic()
-        for key in result.keys():
-            print(key, result[key])
-        xena_obj.start_cont_traffic()
-        Time.sleep(5)
-        result = xena_obj.stop_cont_traffic()
-        for key in result.keys():
-            print(key, result[key])
-        result = xena_obj.send_cont_traffic()
-    elif ans == '6':
-        sys.exit(0)
-    for key in result.keys():
-        print(key, result[key])
+
+    for func in testMethods[int(ans)]:
+        result = func()
+    print(result)
