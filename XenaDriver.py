@@ -769,8 +769,7 @@ class XenaRXStats(object):
             else:
                 logging.warning("XenaPort: unknown stats: %s", param[1])
 
-        mydict = dict()
-        mydict[self._time] = statdict
+        mydict = statdict
         return mydict
 
 
@@ -848,8 +847,7 @@ class XenaTXStats(object):
                 statdict[entry_id] = self._pack_stats(param, 3)
             else:
                 logging.warning("XenaPort: unknown stats: %s", param[1])
-        mydict = dict()
-        mydict[self._time] = statdict
+        mydict = statdict
         return mydict
 
 
@@ -864,10 +862,10 @@ def line_percentage(port, stats, duration, packet_size):
     """
     # this is ugly, but its prettier than calling the get method 3 times...
     try:
-        packets = stats.data[stats.time]['pr_total']['packets']
+        packets = stats.data['pr_total']['packets']
     except KeyError:
         try:
-            packets = stats.data[stats.time]['pt_total']['packets']
+            packets = stats.data['pt_total']['packets']
         except KeyError:
             _logger.error(
                 'Could not calculate line rate because packet stat not found.')
@@ -981,14 +979,12 @@ if __name__ == '__main__':
     print(txstat.data)
     print(rxstat.data)
     gap = port1.get_inter_frame_gap()
-    rxpps = packets_per_second(rxstat.data[rxstat.time]['pr_total']['packets'],
-                               duration)
+    rxpps = packets_per_second(rxstat.data['pr_total']['packets'], duration)
     l2rxbr = l2_bit_rate(packetsize, rxstat.preamble, rxpps)
     l1rxbr = l1_bit_rate(l2rxbr, rxpps, gap, rxstat.preamble)
     print("RXl1BR: {}".format(l1rxbr))
     gap = port0.get_inter_frame_gap()
-    txpps = packets_per_second(txstat.data[txstat.time]['pt_total']['packets'],
-                               duration)
+    txpps = packets_per_second(txstat.data['pt_total']['packets'], duration)
     l2txbr = l2_bit_rate(packetsize, txstat.preamble, txpps)
     l1txbr = l1_bit_rate(l2txbr, txpps, gap, txstat.preamble)
     print("TXl1BR: {}".format(l1txbr))

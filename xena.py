@@ -17,10 +17,8 @@ Xena Traffic Generator Model
 
 # TODO CT List of things that need to be completed
 # 1. Need back to back implementation
-# 2. Need to do L1 bitrate calculation
-# 3. Need to determine what multistream is
-# 4. Need to get latency values from 2544 output / currently showing as None
-# 5. Need to implement fps into api methods.
+# 2. Need to determine what multistream is
+# 3. Need to implement fps into api methods.
 
 # VSPerf imports
 from conf import settings
@@ -131,6 +129,80 @@ class Xena(object):
             'MaxLatency')
         result_dict[ResultsConstants.AVG_LATENCY_NS] = root[0][1][0][0].get(
             'AvgLatency')
+
+        return result_dict
+
+    def _create_api_result(self):
+        """
+        Create result dictionary per trafficgen specifications. If stats are
+        not available return values of 0.
+        :return: ResultsConstants as dictionary
+        """
+        # Handle each case of statistics based on if the data is available.
+        # This prevents uncaught exceptions when the stats aren't available.
+        result_dict = OrderedDict()
+        if self.tx_stats.data.get(self.tx_stats.pt_stream_keys[0]):
+            result_dict[ResultsConstants.TX_FRAMES] = self.tx_stats.data[
+                self.tx_stats.pt_stream_keys[0]]['packets']
+            result_dict[ResultsConstants.TX_RATE_FPS] = self.tx_stats.data[
+                self.tx_stats.pt_stream_keys[0]]['pps']
+            result_dict[ResultsConstants.TX_RATE_MBPS] = self.tx_stats.data[
+                self.tx_stats.pt_stream_keys[0]]['bps'] / 1000
+            result_dict[ResultsConstants.TX_BYTES] = self.tx_stats.data[
+                self.tx_stats.pt_stream_keys[0]]['bytes']
+            result_dict[ResultsConstants.TX_RATE_PERCENT] = line_percentage(
+                self._port0, self.tx_stats, self._duration,
+                self._params['traffic']['l2']['framesize'])
+        else:
+            self._logger.error('Transmit stats not available.')
+            result_dict[ResultsConstants.TX_FRAMES] = 0
+            result_dict[ResultsConstants.TX_RATE_FPS] = 0
+            result_dict[ResultsConstants.TX_RATE_MBPS] = 0
+            result_dict[ResultsConstants.TX_BYTES] = 0
+            result_dict[ResultsConstants.TX_RATE_PERCENT] = 0
+
+        if self.rx_stats.data.get('pr_tpldstraffic'):
+            result_dict[ResultsConstants.RX_FRAMES] = self.rx_stats.data[
+                'pr_tpldstraffic']['0']['packets']
+            result_dict[
+                ResultsConstants.THROUGHPUT_RX_FPS] = self.rx_stats.data[
+                'pr_tpldstraffic']['0']['pps']
+            result_dict[
+                ResultsConstants.THROUGHPUT_RX_MBPS] = self.rx_stats.data[
+                'pr_tpldstraffic']['0']['bps'] / 1000
+            result_dict[ResultsConstants.RX_BYTES] = self.rx_stats.data[
+                'pr_tpldstraffic']['0']['bytes']
+            result_dict[
+                ResultsConstants.THROUGHPUT_RX_PERCENT] = line_percentage(
+                self._port1, self.rx_stats, self._duration,
+                self._params['traffic']['l2']['framesize'])
+        else:
+            result_dict[ResultsConstants.RX_FRAMES] = 0
+            result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = 0
+            result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = 0
+            result_dict[ResultsConstants.RX_BYTES] = 0
+            result_dict[ResultsConstants.THROUGHPUT_RX_PERCENT] = 0
+
+        if self.rx_stats.data.get('pr_tplderrors'):
+            result_dict[ResultsConstants.PAYLOAD_ERR] = self.rx_stats.data[
+                'pr_tplderrors']['0']['pld']
+            result_dict[ResultsConstants.SEQ_ERR] = self.rx_stats.data[
+                'pr_tplderrors']['0']['seq']
+        else:
+            result_dict[ResultsConstants.PAYLOAD_ERR] = 0
+            result_dict[ResultsConstants.SEQ_ERR] = 0
+
+        if self.rx_stats.data.get('pr_tpldlatency'):
+            result_dict[ResultsConstants.MIN_LATENCY_NS] = self.rx_stats.data[
+                'pr_tpldlatency']['0']['min']
+            result_dict[ResultsConstants.MAX_LATENCY_NS] = self.rx_stats.data[
+                'pr_tpldlatency']['0']['max']
+            result_dict[ResultsConstants.AVG_LATENCY_NS] = self.rx_stats.data[
+                'pr_tpldlatency']['0']['avg']
+        else:
+            result_dict[ResultsConstants.MIN_LATENCY_NS] = 0
+            result_dict[ResultsConstants.MAX_LATENCY_NS] = 0
+            result_dict[ResultsConstants.AVG_LATENCY_NS] = 0
 
         return result_dict
 
@@ -261,6 +333,14 @@ class Xena(object):
                     "Failure to start traffic. Check settings and retry.")
         Time.sleep(self._duration + 1)
 
+    def _stop_api_traffic(self):
+        self._port0.traffic_off()
+
+        # getting results
+        self.tx_stats = self._port0.get_tx_stats()
+        self.rx_stats = self._port1.get_rx_stats()
+        return self._create_api_result()
+
     def connect(self):
         """Connect to the traffic generator.
 
@@ -316,28 +396,7 @@ class Xena(object):
                     self._params['traffic'], traffic)
 
         self._start_traffic_api(numpkts)
-        self._port0.traffic_off()
-
-        # getting results
-        tx_stats = self._port0.get_tx_stats()
-        rx_stats = self._port1.get_rx_stats()
-
-        result_dict = OrderedDict()
-
-        result_dict[ResultsConstants.TX_FRAMES] = tx_stats.data[
-            tx_stats.time][tx_stats.pt_stream_keys[0]]['packets']
-        result_dict[ResultsConstants.RX_FRAMES] = rx_stats.data[
-            rx_stats.time]['pr_tpldstraffic']['0']['packets']
-        result_dict[ResultsConstants.TX_BYTES] = tx_stats.data[
-            tx_stats.time][tx_stats.pt_stream_keys[0]]['bytes']
-        result_dict[ResultsConstants.RX_BYTES] = rx_stats.data[
-            rx_stats.time]['pr_tpldstraffic']['0']['bytes']
-        result_dict[ResultsConstants.PAYLOAD_ERR] = rx_stats.data[
-            rx_stats.time]['pr_tplderrors']['0']['pld']
-        result_dict[ResultsConstants.SEQ_ERR] = rx_stats.data[
-            rx_stats.time]['pr_tplderrors']['0']['seq']
-
-        return result_dict
+        return self._stop_api_traffic()
 
     def send_cont_traffic(self, traffic=None, duration=20, multistream=False):
         """Send a continuous flow of traffic.r
@@ -370,34 +429,7 @@ class Xena(object):
                     self._params['traffic'], traffic)
 
         self._start_traffic_api(-1)
-
-        # getting results
-        tx_stats = self._port0.get_tx_stats()
-        rx_stats = self._port1.get_rx_stats()
-
-        result_dict = OrderedDict()
-        result_dict[ResultsConstants.TX_RATE_FPS] = tx_stats.data[
-            tx_stats.time][tx_stats.pt_stream_keys[0]]['pps']
-        result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = rx_stats.data[
-            rx_stats.time]['pr_tpldstraffic']['0']['pps']
-        result_dict[ResultsConstants.TX_RATE_MBPS] = tx_stats.data[
-            tx_stats.time][tx_stats.pt_stream_keys[0]]['bps'] * 1000
-        result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = rx_stats.data[
-            rx_stats.time]['pr_tpldstraffic']['0']['bps'] * 1000
-        result_dict[ResultsConstants.TX_RATE_PERCENT] = line_percentage(
-            self._port0, tx_stats, self._duration,
-            self._params['traffic']['l2']['framesize'])
-        result_dict[ResultsConstants.THROUGHPUT_RX_PERCENT] = line_percentage(
-            self._port1, rx_stats, self._duration,
-            self._params['traffic']['l2']['framesize'])
-        result_dict[ResultsConstants.MIN_LATENCY_NS] = rx_stats.data[
-            rx_stats.time]['pr_tpldlatency']['0']['min']
-        result_dict[ResultsConstants.MAX_LATENCY_NS] = rx_stats.data[
-            rx_stats.time]['pr_tpldlatency']['0']['max']
-        result_dict[ResultsConstants.AVG_LATENCY_NS] = rx_stats.data[
-            rx_stats.time]['pr_tpldlatency']['0']['avg']
-
-        return result_dict
+        return self._stop_api_traffic()
 
     def start_cont_traffic(self, traffic=None, duration=20):
         """Non-blocking version of 'send_cont_traffic'.
@@ -420,38 +452,7 @@ class Xena(object):
     def stop_cont_traffic(self):
         """Stop continuous transmission and return results.
         """
-        self._port0 = self.xm.get_module_port(TRAFFICGEN_MODULE1,
-                                              TRAFFICGEN_PORT1)
-        self._port0.traffic_off()
-
-        # getting results
-        tx_stats = self._port0.get_tx_stats()
-        rx_stats = self._port1.get_rx_stats()
-
-        result_dict = OrderedDict()
-
-        result_dict[ResultsConstants.TX_RATE_FPS] = tx_stats.data[
-            tx_stats.time][tx_stats.pt_stream_keys[0]]['pps']
-        result_dict[ResultsConstants.THROUGHPUT_RX_FPS] = rx_stats.data[
-            rx_stats.time]['pr_tpldstraffic']['0']['pps']
-        result_dict[ResultsConstants.TX_RATE_MBPS] = tx_stats.data[
-            tx_stats.time][tx_stats.pt_stream_keys[0]]['bps'] * 1000
-        result_dict[ResultsConstants.THROUGHPUT_RX_MBPS] = rx_stats.data[
-            rx_stats.time]['pr_tpldstraffic']['0']['bps'] * 1000
-        result_dict[ResultsConstants.TX_RATE_PERCENT] = line_percentage(
-            self._port0, tx_stats, self._duration,
-            self._params['traffic']['l2']['framesize'])
-        result_dict[ResultsConstants.THROUGHPUT_RX_PERCENT] = line_percentage(
-            self._port1, rx_stats, self._duration,
-            self._params['traffic']['l2']['framesize'])
-        result_dict[ResultsConstants.MIN_LATENCY_NS] = rx_stats.data[
-            rx_stats.time]['pr_tpldlatency']['0']['min']
-        result_dict[ResultsConstants.MAX_LATENCY_NS] = rx_stats.data[
-            rx_stats.time]['pr_tpldlatency']['0']['max']
-        result_dict[ResultsConstants.AVG_LATENCY_NS] = rx_stats.data[
-            rx_stats.time]['pr_tpldlatency']['0']['avg']
-
-        return result_dict
+        return self._start_traffic_api()
 
     def send_rfc2544_throughput(self, traffic=None, trials=3, duration=20,
                                 lossrate=0.0, multistream=False):
