@@ -22,7 +22,7 @@ from collections import namedtuple
 CMD_PREFIX = 'gencmd : '
 TRAFFIC_DEFAULTS = {
     'l2': {
-        'framesize': 64,
+        'framesize': 128,
         'srcmac': '52:54:00:C6:10:10',
         'dstmac': '52:54:00:C6:10:20',
         'srcport': 3000,
@@ -30,12 +30,12 @@ TRAFFIC_DEFAULTS = {
     },
     'l3': {
         'proto': 'udp',
-        'srcip': '192.168.0.5',
-        'dstip': '192.168.0.6',
+        'srcip': '192.168.100.10',
+        'dstip': '192.168.100.11',
     },
     'vlan': {
-        'enabled': False,
-        'id': 0,
+        'enabled': True,
+        'id': 5,
         'priority': 0,
         'cfi': 0,
     },
