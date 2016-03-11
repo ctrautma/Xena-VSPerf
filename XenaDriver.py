@@ -17,7 +17,9 @@
 # most of the logic of this code. The code has some minor changes for PEP 8
 # and python 3 conversion.
 # Flavios xena libraries available at https://github.com/fleitner/XenaPythonLib
-
+"""
+Xena Socket API Driver module
+"""
 import logging
 import socket
 import sys
@@ -60,21 +62,13 @@ CMD_SET_STREAM_TEST_PAYLOAD_ID = 'ps_tpldid'
 CMD_START_TRAFFIC = 'p_traffic on'
 CMD_STOP_TRAFFIC = 'p_traffic off'
 
-_logger = logging.getLogger(__name__)
-if len(_logger.handlers) == 0:
-    # no parent logger available, create a temporary one
-    log = logging.getLogger('local_log')
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter(
-            '%(asctime)-15s %(levelname)-10s %(funcName)-20s ' +
-            '%(lineno)-5d %(message)s')
-    handler.setFormatter(formatter)
-    log.addHandler(handler)
-    log.setLevel(logging.DEBUG)
-    _logger = log
+_LOGGER = logging.getLogger(__name__)
 
 
 class SimpleSocket(object):
+    """
+    Socket class
+    """
     def __init__(self, hostname, port=5025, timeout=1):
         """Constructor
         :param hostname: hostname or ip as string
@@ -88,9 +82,9 @@ class SimpleSocket(object):
             self.sock.settimeout(timeout)
             self.sock.connect((hostname, port))
         except socket.error as msg:
-            _logger.error(
-                    "Cannot connect to Xena Socket at {}. Exception: {}".format(
-                            hostname, msg))
+            _LOGGER.error(
+                "Cannot connect to Xena Socket at {}. Exception: {}".format(
+                    hostname, msg))
             sys.exit(1)
 
     def __del__(self):
@@ -134,6 +128,9 @@ class SimpleSocket(object):
 
 
 class KeepAliveThread(threading.Thread):
+    """
+    Keep alive socket class
+    """
     message = ''
 
     def __init__(self, connection, interval=10):
@@ -147,9 +144,9 @@ class KeepAliveThread(threading.Thread):
         self.interval = interval
         self.finished = threading.Event()
         self.setDaemon(True)
-        _logger.debug(
-                'Xena Socket keep alive thread initiated, interval ' +
-                '{} seconds'.format(self.interval))
+        _LOGGER.debug(
+            'Xena Socket keep alive thread initiated, interval ' +
+            '{} seconds'.format(self.interval))
 
     def stop(self):
         """ Thread stop. See python thread docs for more info
@@ -168,6 +165,9 @@ class KeepAliveThread(threading.Thread):
 
 
 class XenaSocketDriver(SimpleSocket):
+    """
+    Xena socket class
+    """
     reply_ok = '<OK>'
 
     def __init__(self, hostname, port=22611):
@@ -197,10 +197,17 @@ class XenaSocketDriver(SimpleSocket):
         :return: Boolean True if command response is good, False otherwise
         """
         resp = self.ask(cmd).decode('utf-8').strip('\n')
-        _logger.info('[ask_verify] {}'.format(resp))
+        _LOGGER.info('[ask_verify] {}'.format(resp))
         if resp == self.reply_ok:
             return True
         return False
+
+    def disconnect(self):
+        """
+        Close the socket connection
+        :return: None
+        """
+        self.sock.close()
 
     def send_command(self, cmd):
         """ Send the command over the socket with no return
@@ -247,6 +254,9 @@ class XenaSocketDriver(SimpleSocket):
 
 
 class XenaManager(object):
+    """
+    Manager class for port and socket functions
+    """
     def __init__(self, socketDriver, user='', password='xena'):
         """Constructor
 
@@ -262,10 +272,10 @@ class XenaManager(object):
         self.ports = list()
 
         if self.logon(password):
-            _logger.info('Connected to Xena at {}'.format(self.driver.hostname))
+            _LOGGER.info('Connected to Xena at {}'.format(self.driver.hostname))
         else:
-            _logger.error('Failed to logon to Xena at {}'.format(
-                    self.driver.hostname))
+            _LOGGER.error('Failed to logon to Xena at {}'.format(
+                self.driver.hostname))
             return
 
         self.set_owner(user)
@@ -303,11 +313,10 @@ class XenaManager(object):
         :param port: port number as int or str
         :return: XenaPort object or None if not found
         """
-        for p in self.ports:
-            if p.port == str(port) and p.module == str(module):
-                return p
-        else:
-            return None
+        for por in self.ports:
+            if por.port == str(port) and por.module == str(module):
+                return por
+        return None
 
     def logon(self, password):
         """Login to the Xena traffic generator using the ``password`` supplied.
@@ -325,6 +334,9 @@ class XenaManager(object):
 
 
 class XenaPort(object):
+    """
+    Xena Port emulator class
+    """
     def __init__(self, manager, module, port):
         """Constructor
 
@@ -370,33 +382,37 @@ class XenaPort(object):
         """Add a stream to the port.
         :return: XenaStream object, None if failure
         """
-        id = len(self._streams)
-        stream = XenaStream(self, id)
+        identifier = len(self._streams)
+        stream = XenaStream(self, identifier)
         if self._manager.driver.ask_verify(make_stream_command(
                 CMD_CREATE_STREAM, '', stream)):
             self._streams.append(stream)
             return stream
         else:
-            _logger.error("Error during stream creation")
+            _LOGGER.error("Error during stream creation")
             return None
 
-    def clear_stats(self, rx=True, tx=True):
+    def clear_stats(self, rx_clear=True, tx_clear=True):
         """Clear the port stats
 
-        :param rx: Boolean if rx stats are to be cleared
-        :param tx: Boolean if tx stats are to be cleared
+        :param rx_clear: Boolean if rx stats are to be cleared
+        :param tx_clear: Boolean if tx stats are to be cleared
         :return: Boolean True is response OK, False if error.
         """
         command = make_port_command(CMD_CLEAR_RX_STATS, self)
-        res1 = self._manager.driver.ask_verify(command) if rx else True
+        res1 = self._manager.driver.ask_verify(command) if rx_clear else True
         command = make_port_command(CMD_CLEAR_TX_STATS, self)
-        res2 = self._manager.driver.ask_verify(command) if tx else True
+        res2 = self._manager.driver.ask_verify(command) if tx_clear else True
         if all([res1, res2]):
             return True
         else:
             return False
 
     def get_effective_speed(self):
+        """
+        Get the effective speed on the port
+        :return: effective speed as float
+        """
         port_speed = self.get_port_speed()
         reduction = self.get_port_speed_reduction()
         effective_speed = port_speed * (1.0 - reduction / 1000000.0)
@@ -437,8 +453,8 @@ class XenaPort(object):
         :return: Receive stats as dictionary
         """
         command = make_port_command(CMD_GET_RX_STATS, self)
-        rxData = self._manager.driver.send_query_replies(command)
-        data = XenaRXStats(rxData, time.time())
+        rx_data = self._manager.driver.send_query_replies(command)
+        data = XenaRXStats(rx_data, time.time())
         return data
 
     def get_tx_stats(self):
@@ -446,8 +462,8 @@ class XenaPort(object):
         :return: Receive stats as dictionary
         """
         command = make_port_command(CMD_GET_TX_STATS, self)
-        txData = self._manager.driver.send_query_replies(command)
-        data = XenaTXStats(txData, time.time())
+        tx_data = self._manager.driver.send_query_replies(command)
+        data = XenaTXStats(tx_data, time.time())
         return data
 
     def release_port(self):
@@ -471,13 +487,13 @@ class XenaPort(object):
         command = make_port_command(CMD_RESET, self)
         return self._manager.driver.ask_verify(command)
 
-    def set_port_time_limit(self, ms):
+    def set_port_time_limit(self, micro_seconds):
         """Set the port time limit in ms
-        :param ms: ms for port time limit
+        :param micro_seconds: ms for port time limit
         :return: Boolean True is response OK, False if error.
         """
         command = make_port_command('{} {}'.format(
-                CMD_SET_PORT_TIME_LIMIT, ms), self)
+            CMD_SET_PORT_TIME_LIMIT, micro_seconds), self)
         return self._manager.driver.ask_verify(command)
 
     def traffic_off(self):
@@ -496,6 +512,9 @@ class XenaPort(object):
 
 
 class XenaStream(object):
+    """
+    Xena stream emulator class
+    """
     def __init__(self, xenaPort, streamID):
         """Constructor
 
@@ -503,25 +522,29 @@ class XenaStream(object):
         :param streamID: Stream ID as int or string
         :return: XenaStream object
         """
-        self._xenaPort = xenaPort
-        self._streamID = str(streamID)
-        self._manager = self._xenaPort.manager
+        self._xena_port = xenaPort
+        self._stream_id = str(streamID)
+        self._manager = self._xena_port.manager
 
     @property
-    def xenaPort(self):
+    def xena_port(self):
         """Property for port attribute
         :return: XenaPort object
         """
-        return self._xenaPort
+        return self._xena_port
 
     @property
-    def streamID(self):
+    def stream_id(self):
         """Property for streamID attribute
         :return: streamID value as string
         """
-        return self._streamID
+        return self._stream_id
 
     def get_stream_data(self):
+        """
+        Get the response for stream data
+        :return: String of response for stream data info
+        """
         command = make_stream_command(CMD_GET_STREAM_DATA, '?', self)
         res = self._manager.driver.ask(command).decode('utf-8')
         return res
@@ -544,14 +567,14 @@ class XenaStream(object):
         :return: Boolean True if success, False if error
         """
         return self._manager.driver.ask_verify(make_stream_command(
-                CMD_SET_STREAM_ON_OFF, 'off', self))
+            CMD_SET_STREAM_ON_OFF, 'off', self))
 
     def set_on(self):
         """Set the stream to on
         :return: Boolean True if success, False if error
         """
         return self._manager.driver.ask_verify(make_stream_command(
-                CMD_SET_STREAM_ON_OFF, 'on', self))
+            CMD_SET_STREAM_ON_OFF, 'on', self))
 
     def set_packet_header(self, header):
         """Set the stream packet header
@@ -560,21 +583,21 @@ class XenaStream(object):
         :return: Boolean True if success, False if error
         """
         return self._manager.driver.ask_verify(make_stream_command(
-                CMD_SET_STREAM_PACKET_HEADER, header, self))
+            CMD_SET_STREAM_PACKET_HEADER, header, self))
 
-    def set_packet_length(self, patternType, min, max):
+    def set_packet_length(self, pattern_type, minimum, maximum):
         """Set the pattern length with min and max values based on the pattern
         type supplied
 
-        :param patternType: String of pattern type, valid entries [ fixed,
+        :param pattern_type: String of pattern type, valid entries [ fixed,
          butterfly, random, mix, incrementing ]
-        :param min: integer of minimum byte value
-        :param max: integer of maximum byte value
+        :param minimum: integer of minimum byte value
+        :param maximum: integer of maximum byte value
         :return: Boolean True if success, False if error
         """
         return self._manager.driver.ask_verify(make_stream_command(
-                CMD_SET_STREAM_PACKET_LENGTH, '{} {} {}'.format(
-                        patternType, min, max), self))
+            CMD_SET_STREAM_PACKET_LENGTH, '{} {} {}'.format(
+                pattern_type, minimum, maximum), self))
 
     def set_packet_limit(self, limit):
         """Set the packet limit
@@ -583,19 +606,19 @@ class XenaStream(object):
         :return: Boolean True if success, False if error
         """
         return self._manager.driver.ask_verify(make_stream_command(
-                CMD_SET_STREAM_PACKET_LIMIT, limit, self))
+            CMD_SET_STREAM_PACKET_LIMIT, limit, self))
 
-    def set_packet_payload(self, payloadType, hexValue):
+    def set_packet_payload(self, payload_type, hex_value):
         """Set the payload to the hex value based on the payload type
 
-        :param payloadType: string of the payload type, valid entries [ pattern,
+        :param payload_type: string of the payload type, valid entries [ pattern,
          incrementing, prbs ]
-        :param hexValue: hex string of valid hex
+        :param hex_value: hex string of valid hex
         :return: Boolean True if success, False if error
         """
         return self._manager.driver.ask_verify(make_stream_command(
-                CMD_SET_STREAM_PACKET_PAYLOAD, '{} {}'.format(
-                        payloadType, hexValue), self))
+            CMD_SET_STREAM_PACKET_PAYLOAD, '{} {}'.format(
+                payload_type, hex_value), self))
 
     def set_rate_fraction(self, fraction):
         """Set the rate fraction
@@ -604,18 +627,21 @@ class XenaStream(object):
         :return: Boolean True if success, False if error
         """
         return self._manager.driver.ask_verify(make_stream_command(
-                CMD_SET_STREAM_RATE_FRACTION, fraction, self))
+            CMD_SET_STREAM_RATE_FRACTION, fraction, self))
 
-    def set_payload_id(self, id):
+    def set_payload_id(self, identifier):
         """ Set the test payload ID
-        :param id: ID as int or string
+        :param identifier: ID as int or string
         :return: Boolean True if success, False if error
         """
         return self._manager.driver.ask_verify(make_stream_command(
-                CMD_SET_STREAM_TEST_PAYLOAD_ID, id, self))
+            CMD_SET_STREAM_TEST_PAYLOAD_ID, identifier, self))
 
 
 class XenaRXStats(object):
+    """
+    Receive stat class
+    """
     def __init__(self, stats, epoc):
         """ Constructor
         :param stats: Stats from pr all command as list
@@ -650,8 +676,8 @@ class XenaRXStats(object):
         :param start: What element to start at
         :return: Dictionary of stats
         """
-        fields = [ 'fcserrors', 'pauseframes', 'arprequests', 'arpreplies',
-                   'pingrequests', 'pingreplies', 'gapcount', 'gapduration' ]
+        fields = ['fcserrors', 'pauseframes', 'arprequests', 'arpreplies',
+                  'pingrequests', 'pingreplies', 'gapcount', 'gapduration']
         return self._pack_stats(param, start, fields)
 
     def _pack_tplds_stats(self, param, start):
@@ -763,9 +789,9 @@ class XenaRXStats(object):
                 statdict['pr_filter'] = data
             elif param[1] == 'P_RECEIVESYNC':
                 if param[2] == 'IN_SYNC':
-                    statdict['p_receivesync' ] = { 'IN SYNC' : 'True' }
+                    statdict['p_receivesync'] = {'IN SYNC': 'True'}
                 else:
-                    statdict['p_receivesync' ] = { 'IN SYNC' : 'False' }
+                    statdict['p_receivesync'] = {'IN SYNC': 'False'}
             else:
                 logging.warning("XenaPort: unknown stats: %s", param[1])
 
@@ -774,6 +800,9 @@ class XenaRXStats(object):
 
 
 class XenaTXStats(object):
+    """
+    Xena transmit stat class
+    """
     def __init__(self, stats, epoc):
         """ Constructor
         :param stats: Stats from pt all command as list
@@ -851,13 +880,14 @@ class XenaTXStats(object):
         return mydict
 
 
-def line_percentage(port, stats, duration, packet_size):
+def line_percentage(port, stats, time_active, packet_size):
     """
     Calculate the line percentage rate from the duration, port object and stat
     object.
     :param port: XenaPort object
     :param stats: Xena RXStat or TXStat object
-    :param duration: time the stream was active
+    :param time_active: time the stream was active in secs as int
+    :param packet_size: packet size as int
     :return: line percentage as float
     """
     # this is ugly, but its prettier than calling the get method 3 times...
@@ -867,11 +897,11 @@ def line_percentage(port, stats, duration, packet_size):
         try:
             packets = stats.data['pt_total']['packets']
         except KeyError:
-            _logger.error(
+            _LOGGER.error(
                 'Could not calculate line rate because packet stat not found.')
             return 0
     ifg = port.get_inter_frame_gap()
-    pps = packets_per_second(packets, duration)
+    pps = packets_per_second(packets, time_active)
     l2br = l2_bit_rate(packet_size, stats.preamble, pps)
     l1br = l1_bit_rate(l2br, pps, ifg, stats.preamble)
     return 100.0 * l1br / port.get_effective_speed()
@@ -908,88 +938,88 @@ def make_manager_command(cmd, argument):
     :return: String of command
     """
     command = '{} "{}"'.format(cmd, argument)
-    _logger.info("[Command Sent] : {}".format(command))
+    _LOGGER.info("[Command Sent] : {}".format(command))
     return command
 
 
-def make_port_command(cmd, xenaPort):
+def make_port_command(cmd, xena_port):
     """ String builder for Xena port commands
 
     :param cmd: Command to send
-    :param xenaPort: XenaPort object
+    :param xena_port: XenaPort object
     :return: String of command
     """
-    command = "{} {}".format(xenaPort.port_string(), cmd)
-    _logger.info("[Command Sent] : {}".format(command))
+    command = "{} {}".format(xena_port.port_string(), cmd)
+    _LOGGER.info("[Command Sent] : {}".format(command))
     return command
 
 
-def make_stream_command(cmd, args, xenaStream):
+def make_stream_command(cmd, args, xena_stream):
     """ String builder for Xena port commands
 
     :param cmd: Command to send
-    :param xenaStream: XenaStream object
+    :param xena_stream: XenaStream object
     :return: String of command
     """
-    command = "{} {} [{}] {}".format(xenaStream.xenaPort.port_string(), cmd,
-                                     xenaStream.streamID, args)
-    _logger.info("[Command Sent] : {}".format(command))
+    command = "{} {} [{}] {}".format(xena_stream.xenaPort.port_string(), cmd,
+                                     xena_stream.streamID, args)
+    _LOGGER.info("[Command Sent] : {}".format(command))
     return command
 
 
-def packets_per_second(packets, duration):
+def packets_per_second(packets, time_in_sec):
     """
     Return the pps as float
     :param packets: total packets
-    :param duration: time in seconds
+    :param time_in_sec: time in seconds
     :return: float of pps
     """
-    return packets / duration
+    return packets / time_in_sec
 
 
 if __name__ == '__main__':
-    print("Running XenaDriver UnitTest")
-    packetsize = 64
-    duration = 10
-    driver = XenaSocketDriver('10.19.15.19')
-    xm = XenaManager(driver, 'vsperf', 'xena')
-    port0 = xm.add_module_port(3, 0)
-    port1 = xm.add_module_port(3, 1)
-    port0.reserve_port()
-    port1.reserve_port()
-    port0.reset_port()
-    port1.reset_port()
-    p0s0 = port0.add_stream()
-    p0s0.set_on()
-    p0s0.set_packet_header('0x525400c61020525400c61010080045000014000100004' +
+    print("Running XenaDRIVER UnitTest")
+    PACKET_SIZE = 64
+    DURATION = 10
+    DRIVER = XenaSocketDriver('10.19.15.19')
+    X_MANAGER = XenaManager(DRIVER, 'vsperf', 'xena')
+    PORT0 = X_MANAGER.add_module_port(3, 0)
+    PORT1 = X_MANAGER.add_module_port(3, 1)
+    PORT0.reserve_port()
+    PORT1.reserve_port()
+    PORT0.reset_port()
+    PORT1.reset_port()
+    P0S0 = PORT0.add_stream()
+    P0S0.set_on()
+    P0S0.set_packet_header('0x525400c61020525400c61010080045000014000100004' +
                            '00066e70a0000010a000002')
-    p0s0.set_packet_length('fixed', packetsize, 16383)
-    p0s0.set_packet_payload('incrementing', '0x00')
-    p0s0.set_packet_limit(-1)
-    p0s0.set_rate_fraction(1000000)
-    p0s0.set_payload_id(0)
-    port0.set_port_time_limit(1000000 * duration)
-    port0.clear_stats()
-    port1.clear_stats()
-    port0.traffic_on()
-    time.sleep(duration + 1)
-    port0.traffic_off()
-    txstat = port0.get_tx_stats()
-    rxstat = port1.get_rx_stats()
-    print(txstat.data)
-    print(rxstat.data)
-    gap = port1.get_inter_frame_gap()
-    rxpps = packets_per_second(rxstat.data['pr_total']['packets'], duration)
-    l2rxbr = l2_bit_rate(packetsize, rxstat.preamble, rxpps)
-    l1rxbr = l1_bit_rate(l2rxbr, rxpps, gap, rxstat.preamble)
-    print("RXl1BR: {}".format(l1rxbr))
-    gap = port0.get_inter_frame_gap()
-    txpps = packets_per_second(txstat.data['pt_total']['packets'], duration)
-    l2txbr = l2_bit_rate(packetsize, txstat.preamble, txpps)
-    l1txbr = l1_bit_rate(l2txbr, txpps, gap, txstat.preamble)
-    print("TXl1BR: {}".format(l1txbr))
-    print("RXPercentage = {}".format(line_percentage(port1, rxstat, duration,
-                                                     packetsize)))
-    print("TXPercentage = {}".format(line_percentage(port0, txstat, duration,
-                                                     packetsize)))
+    P0S0.set_packet_length('fixed', PACKET_SIZE, 16383)
+    P0S0.set_packet_payload('incrementing', '0x00')
+    P0S0.set_packet_limit(-1)
+    P0S0.set_rate_fraction(1000000)
+    P0S0.set_payload_id(0)
+    PORT0.set_port_time_limit(1000000 * DURATION)
+    PORT0.clear_stats()
+    PORT1.clear_stats()
+    PORT0.traffic_on()
+    time.sleep(DURATION + 1)
+    PORT0.traffic_off()
+    TX_STAT = PORT0.get_tx_stats()
+    RX_STAT = PORT1.get_rx_stats()
+    print(TX_STAT.data)
+    print(RX_STAT.data)
+    GAP = PORT1.get_inter_frame_gap()
+    RX_PPS = packets_per_second(RX_STAT.data['pr_total']['packets'], DURATION)
+    L2_RXBR = l2_bit_rate(PACKET_SIZE, RX_STAT.preamble, RX_PPS)
+    L1_RXBR = l1_bit_rate(L2_RXBR, RX_PPS, GAP, RX_STAT.preamble)
+    print("RXl1BR: {}".format(L1_RXBR))
+    GAP = PORT0.get_inter_frame_gap()
+    TX_PPS = packets_per_second(TX_STAT.data['pt_total']['packets'], DURATION)
+    L2_TXBR = l2_bit_rate(PACKET_SIZE, TX_STAT.preamble, TX_PPS)
+    L1_TXBR = l1_bit_rate(L2_TXBR, TX_PPS, GAP, TX_STAT.preamble)
+    print("TXl1BR: {}".format(L1_TXBR))
+    print("RXPercentage = {}".format(line_percentage(PORT1, RX_STAT, DURATION,
+                                                     PACKET_SIZE)))
+    print("TXPercentage = {}".format(line_percentage(PORT0, TX_STAT, DURATION,
+                                                     PACKET_SIZE)))
 

@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# TODO Enable Micro TPLD if 64 byte packet and Ethernet / VLAN / IP / UDP
+"""
+Xena XML module
+"""
 
 import base64
 import json
@@ -21,7 +22,7 @@ import uuid
 
 import scapy.layers.inet as inet
 
-_logger = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
 
 
 class XMLConfig(object):
@@ -47,24 +48,24 @@ class XMLConfig(object):
         self.custom_packet_sizes = list()
 
         # Xena Chassis info
-        self.chassisIP = None
-        self.chassisPwd = None
+        self.chassis_ip = None
+        self.chassis_pwd = None
 
         # Physical Xena info
         self.module1 = None
         self.module2 = None
         self.port1 = None
         self.port2 = None
-        self.port1_UID = None
-        self.port2_UID = None
-        self.chassisID = None
+        self.port1_uid = None
+        self.port2_uid = None
+        self.chassis_id = None
 
         # Flow info
-        self.microTPLD = None
+        self.micro_tpld = None
 
         # header info
-        self.l2 = None
-        self.l3 = None
+        self.layer2 = None
+        self.layer3 = None
         self.vlan = None
         self.segment1 = list()
         self.segment2 = list()
@@ -84,68 +85,68 @@ class XMLConfig(object):
         """
         packet = self.create_packet_header()
         header_pos = 0
-        if self.l2:
+        if self.layer2:
             packet_bytes = bytes(packet)
-            l2 = packet_bytes[:len(self.l2)]
-            value = encode_byte_array(l2)
+            layer2 = packet_bytes[:len(self.layer2)]
+            value = encode_byte_array(layer2)
             value = value.decode('utf-8')
 
             # swap dst and src for opposite port header info
-            op_l2 = l2[6:12] + l2[:6] + l2[12:]
+            op_l2 = layer2[6:12] + layer2[:6] + layer2[12:]
             opp_value = encode_byte_array(op_l2)
             opp_value = opp_value.decode('utf-8')
 
-            d = {"SegmentType": "ETHERNET",
-                 "SegmentValue": value,
-                 "ItemID": str(uuid.uuid4()),
-                 "ParentID": "",
-                 "Label": ""}
-            self.segment1.append(d)
-            d = {"SegmentType": "ETHERNET",
-                 "SegmentValue": opp_value,
-                 "ItemID": str(uuid.uuid4()),
-                 "ParentID": "",
-                 "Label": ""}
-            self.segment2.append(d)
-            header_pos += len(self.l2)
+            seg = {"SegmentType": "ETHERNET",
+                   "SegmentValue": value,
+                   "ItemID": str(uuid.uuid4()),
+                   "ParentID": "",
+                   "Label": ""}
+            self.segment1.append(seg)
+            seg = {"SegmentType": "ETHERNET",
+                   "SegmentValue": opp_value,
+                   "ItemID": str(uuid.uuid4()),
+                   "ParentID": "",
+                   "Label": ""}
+            self.segment2.append(seg)
+            header_pos += len(self.layer2)
         if self.vlan:
             value = bytes(packet)
             value = value[header_pos: len(self.vlan) + header_pos]
             value = encode_byte_array(value)
             value = value.decode('utf-8')
-            d = {"SegmentType": "VLAN",
-                 "SegmentValue": value,
-                 "ItemID": str(uuid.uuid4()),
-                 "ParentID": "",
-                 "Label": ""}
-            self.segment1.append(d)
-            d['ItemID'] = str(uuid.uuid4())
-            self.segment2.append(d)
+            seg = {"SegmentType": "VLAN",
+                   "SegmentValue": value,
+                   "ItemID": str(uuid.uuid4()),
+                   "ParentID": "",
+                   "Label": ""}
+            self.segment1.append(seg)
+            seg['ItemID'] = str(uuid.uuid4())
+            self.segment2.append(seg)
             header_pos += len(self.vlan)
-        if self.l3:
+        if self.layer3:
             packet_bytes = bytes(packet)
-            l3 = packet_bytes[header_pos: len(self.l3) + header_pos]
-            value = encode_byte_array(l3)
+            layer3 = packet_bytes[header_pos: len(self.layer3) + header_pos]
+            value = encode_byte_array(layer3)
             value = value.decode('utf-8')
 
             # swap dst and src for opposite port header info
-            op_l3 = l3[:12] + l3[16:20] + l3[12:16] + l3[20:]
+            op_l3 = layer3[:12] + layer3[16:20] + layer3[12:16] + layer3[20:]
             opp_value = encode_byte_array(op_l3)
             opp_value = opp_value.decode('utf-8')
 
-            d = {"SegmentType": "IP",
-                 "SegmentValue": value,
-                 "ItemID": str(uuid.uuid4()),
-                 "ParentID": "",
-                 "Label": ""}
-            self.segment1.append(d)
-            d = {"SegmentType": "IP",
-                 "SegmentValue": opp_value,
-                 "ItemID": str(uuid.uuid4()),
-                 "ParentID": "",
-                 "Label": ""}
-            self.segment2.append(d)
-            header_pos += len(self.l3)
+            seg = {"SegmentType": "IP",
+                   "SegmentValue": value,
+                   "ItemID": str(uuid.uuid4()),
+                   "ParentID": "",
+                   "Label": ""}
+            self.segment1.append(seg)
+            seg = {"SegmentType": "IP",
+                   "SegmentValue": opp_value,
+                   "ItemID": str(uuid.uuid4()),
+                   "ParentID": "",
+                   "Label": ""}
+            self.segment2.append(seg)
+            header_pos += len(self.layer3)
 
     def build_l2_header(self, dst_mac='aa:aa:aa:aa:aa:aa',
                         src_mac='bb:bb:bb:bb:bb:bb', **kwargs):
@@ -156,7 +157,7 @@ class XMLConfig(object):
         :param kwargs: Extra params per scapy usage.
         :return: None
         """
-        self.l2 = inet.Ether(dst=dst_mac, src=src_mac, **kwargs)
+        self.layer2 = inet.Ether(dst=dst_mac, src=src_mac, **kwargs)
 
     def build_l3_header_ip4(self, src_ip='192.168.0.2', dst_ip='192.168.0.3',
                             protocol='UDP', **kwargs):
@@ -168,8 +169,8 @@ class XMLConfig(object):
         :param kwargs: Extra params per scapy usage
         :return: None
         """
-        self.l3 = inet.IP(src=src_ip, dst=dst_ip, proto=protocol.lower(),
-                          **kwargs)
+        self.layer3 = inet.IP(src=src_ip, dst=dst_ip, proto=protocol.lower(),
+                              **kwargs)
 
     def build_vlan_header(self, vlan_id=1, **kwargs):
         """
@@ -187,12 +188,12 @@ class XMLConfig(object):
         :return: Scapy packet header
         """
         packet = inet.Ether()
-        if self.l2:
-            packet = self.l2
+        if self.layer2:
+            packet = self.layer2
         if self.vlan:
             packet /= self.vlan
-        if self.l3:
-            packet /= self.l3
+        if self.layer3:
+            packet /= self.layer3
         return packet
 
     def read_config(self):
@@ -203,10 +204,10 @@ class XMLConfig(object):
         try:
             self.back2back_enable = True if self.file_data[
                 'TestOptions']['TestTypeOptionMap']['Back2Back'][
-                'Enabled'] == 'true' else False
-            self.chassisIP = self.file_data['ChassisManager']['ChassisList'][
+                    'Enabled'] == 'true' else False
+            self.chassis_ip = self.file_data['ChassisManager']['ChassisList'][
                 0]['HostName']
-            self.chassisPwd = self.file_data['ChassisManager'][
+            self.chassis_pwd = self.file_data['ChassisManager'][
                 'ChassisList'][0]['Password']
             self.custom_packet_sizes = self.file_data['TestOptions'][
                 'PacketSizes']['CustomPacketSizes']
@@ -214,31 +215,31 @@ class XMLConfig(object):
                 'TestTypeOptionMap']['Throughput']['Duration']
             self.loss_rate = self.file_data['TestOptions'][
                 'TestTypeOptionMap']['Throughput']['RateIterationOptions'][
-                'AcceptableLoss']
-            self.microTPLD = True if self.file_data[
+                    'AcceptableLoss']
+            self.micro_tpld = True if self.file_data[
                 'TestOptions']['FlowCreationOptions'][
-                'UseMicroTpldOnDemand'] == 'true' else False
+                    'UseMicroTpldOnDemand'] == 'true' else False
             self.module1 = self.file_data['PortHandler']['EntityList'][0][
                 'PortRef']['ModuleIndex']
             self.module2 = self.file_data['PortHandler']['EntityList'][1][
                 'PortRef']['ModuleIndex']
             self.port1 = self.file_data['PortHandler']['EntityList'][0][
                 'PortRef']['PortIndex']
-            self.port1_UID = self.file_data['PortHandler']['EntityList'][0][
+            self.port1_uid = self.file_data['PortHandler']['EntityList'][0][
                 'ItemID']
             self.port2 = self.file_data['PortHandler']['EntityList'][1][
                 'PortRef']['PortIndex']
-            self.port2_UID = self.file_data['PortHandler']['EntityList'][1][
+            self.port2_uid = self.file_data['PortHandler']['EntityList'][1][
                 'ItemID']
             self.throughput_enable = True if self.file_data[
                 'TestOptions']['TestTypeOptionMap']['Throughput'][
-                'Enabled'] == 'true' else False
+                    'Enabled'] == 'true' else False
             self.trials = self.file_data['TestOptions']['TestTypeOptionMap'][
                 'Throughput']['Iterations']
             return True
-        except Exception as e:
-            _logger.exception(
-                'Error in XML file, setting not found: {}'.format(e))
+        except KeyError as exc:
+            _LOGGER.exception(
+                'Error in XML file, setting not found: {}'.format(exc))
             return False
 
     def read_file(self):
@@ -250,8 +251,13 @@ class XMLConfig(object):
             with open(self.xml_path, 'r', encoding='utf-8') as data_file:
                 self.file_data = json.loads(data_file.read())
                 return True
-        except Exception as e:
-            _logger.exception('Exception during Xena xml read: {}'.format(e))
+        except ValueError as exc:
+            # general json exception, Python 3.5 adds new exception type
+            _LOGGER.exception(
+                "Exception with json read: {}".format(exc))
+        except IOError as exc:
+            _LOGGER.exception('Exception during file open: {} file={}'.format(
+                exc, self.xml_path))
             return False
 
     def write_config(self):
@@ -262,9 +268,9 @@ class XMLConfig(object):
         self.file_data['TestOptions']['TestTypeOptionMap']['Back2Back'][
             'Enabled'] = 'true' if self.back2back_enable else 'false'
         self.file_data['ChassisManager']['ChassisList'][0][
-            'HostName'] = self.chassisIP
+            'HostName'] = self.chassis_ip
         self.file_data['ChassisManager']['ChassisList'][0][
-            'Password'] = self.chassisPwd
+            'Password'] = self.chassis_pwd
         self.file_data['TestOptions']['PacketSizes'][
             'CustomPacketSizes'] = self.custom_packet_sizes
         self.file_data['TestOptions']['TestTypeOptionMap']['Throughput'][
@@ -272,7 +278,7 @@ class XMLConfig(object):
         self.file_data['TestOptions']['TestTypeOptionMap']['Throughput'][
             'RateIterationOptions']['AcceptableLoss'] = self.loss_rate
         self.file_data['TestOptions']['FlowCreationOptions'][
-            'UseMicroTpldOnDemand'] = 'true' if self.microTPLD else 'false'
+            'UseMicroTpldOnDemand'] = 'true' if self.micro_tpld else 'false'
         self.file_data['PortHandler']['EntityList'][0]['PortRef'][
             'ModuleIndex'] = self.module1
         self.file_data['PortHandler']['EntityList'][1]['PortRef'][
@@ -280,11 +286,11 @@ class XMLConfig(object):
         self.file_data['PortHandler']['EntityList'][0]['PortRef'][
             'PortIndex'] = self.port1
         self.file_data['PortHandler']['EntityList'][0][
-            'ItemID'] = self.port1_UID
+            'ItemID'] = self.port1_uid
         self.file_data['PortHandler']['EntityList'][1]['PortRef'][
             'PortIndex'] = self.port2
         self.file_data['PortHandler']['EntityList'][1][
-            'ItemID'] = self.port2_UID
+            'ItemID'] = self.port2_uid
         self.file_data['StreamProfileHandler']['EntityList'][0][
             'StreamConfig']['HeaderSegments'] = self.segment1
         self.file_data['StreamProfileHandler']['EntityList'][1][
@@ -301,12 +307,17 @@ class XMLConfig(object):
         :return: Boolean if success, False if failure.
         """
         try:
-            with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(self.file_data, f, indent=2, sort_keys=True,
+            with open(output_path, 'w', encoding='utf-8') as fileh:
+                json.dump(self.file_data, fileh, indent=2, sort_keys=True,
                           ensure_ascii=True)
             return True
-        except Exception as e:
-            _logger.exception('Exception during Xena xml write: {}'.format(e))
+        except ValueError as exc:
+            # general json exception, Python 3.5 adds new exception type
+            _LOGGER.exception(
+                "Exception with json write: {}".format(exc))
+        except IOError as exc:
+            _LOGGER.exception('Exception during file open: {} file={}'.format(
+                exc, output_path))
             return False
 
 
@@ -316,9 +327,9 @@ def decode_byte_array(enc_str):
         :return: The decoded byte array
     """
     dec_string = base64.b64decode(enc_str)
-    b = bytearray()
-    b.extend(dec_string)
-    return b
+    barray = bytearray()
+    barray.extend(dec_string)
+    return barray
 
 
 def encode_byte_array(byte_arr):
@@ -332,32 +343,33 @@ def encode_byte_array(byte_arr):
 
 if __name__ == "__main__":
     print("Running UnitTest for XenaXML")
-    x = XMLConfig()
-    x.build_l2_header(dst_mac='ff:ff:ff:ff:ff:ff', src_mac='ee:ee:ee:ee:ee:ee')
-    x.build_l3_header_ip4(src_ip='192.168.100.2', dst_ip='192.168.100.3',
-                          protocol='udp')
-    x.trials = 2
-    x.duration = 15
-    x.loss_rate = 0
-    x.custom_packet_sizes = [64]
-    x.add_header_segments()
-    x.write_config()
-    x.write_file('./testthis.x2544')
-    x = XMLConfig('./testthis.x2544')
-    for i in decode_byte_array(x.file_data['StreamProfileHandler'][
-                                   'EntityList'][0]['StreamConfig'][
-                                   'HeaderSegments'][0]['SegmentValue']):
+    XML = XMLConfig()
+    XML.build_l2_header(dst_mac='ff:ff:ff:ff:ff:ff',
+                        src_mac='ee:ee:ee:ee:ee:ee')
+    XML.build_l3_header_ip4(src_ip='192.168.100.2', dst_ip='192.168.100.3',
+                            protocol='udp')
+    XML.trials = 2
+    XML.duration = 15
+    XML.loss_rate = 0
+    XML.custom_packet_sizes = [64]
+    XML.add_header_segments()
+    XML.write_config()
+    XML.write_file('./testthis.x2544')
+    XML = XMLConfig('./testthis.x2544')
+    for i in decode_byte_array(
+            XML.file_data['StreamProfileHandler']['EntityList'][0][
+                'StreamConfig']['HeaderSegments'][0]['SegmentValue']):
         print(i)
-    for i in decode_byte_array(x.file_data['StreamProfileHandler'][
-                                   'EntityList'][0]['StreamConfig'][
-                                   'HeaderSegments'][1]['SegmentValue']):
+    for i in decode_byte_array(
+            XML.file_data['StreamProfileHandler']['EntityList'][0][
+                'StreamConfig']['HeaderSegments'][1]['SegmentValue']):
         print(i)
     print("src and dst swapped")
-    for i in decode_byte_array(x.file_data['StreamProfileHandler'][
-                                   'EntityList'][1]['StreamConfig'][
-                                   'HeaderSegments'][0]['SegmentValue']):
+    for i in decode_byte_array(
+            XML.file_data['StreamProfileHandler']['EntityList'][1][
+                'StreamConfig']['HeaderSegments'][0]['SegmentValue']):
         print(i)
-    for i in decode_byte_array(x.file_data['StreamProfileHandler'][
-                                   'EntityList'][1]['StreamConfig'][
-                                   'HeaderSegments'][1]['SegmentValue']):
+    for i in decode_byte_array(
+            XML.file_data['StreamProfileHandler']['EntityList'][1][
+                'StreamConfig']['HeaderSegments'][1]['SegmentValue']):
         print(i)
