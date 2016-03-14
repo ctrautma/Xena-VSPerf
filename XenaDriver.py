@@ -1,4 +1,4 @@
-# Copyright 2015 Intel Corporation.
+# Copyright 2016 Red Hat Inc & Xena Networks.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,12 @@
 # most of the logic of this code. The code has some minor changes for PEP 8
 # and python 3 conversion.
 # Flavios xena libraries available at https://github.com/fleitner/XenaPythonLib
+
+# Contributors:
+#   Flavio Leitner, Red Hat Inc.
+#   Dan Amzulescu, Xena Networks
+#   Christian Trautman, Red Hat Inc.
+
 """
 Xena Socket API Driver module
 """
