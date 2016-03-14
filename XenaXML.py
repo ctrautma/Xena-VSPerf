@@ -61,8 +61,6 @@ class XMLConfig(object):
         self.module2 = None
         self.port1 = None
         self.port2 = None
-        self.port1_uid = None
-        self.port2_uid = None
         self.chassis_id = None
 
         # Flow info
@@ -230,12 +228,8 @@ class XMLConfig(object):
                 'PortRef']['ModuleIndex']
             self.port1 = self.file_data['PortHandler']['EntityList'][0][
                 'PortRef']['PortIndex']
-            self.port1_uid = self.file_data['PortHandler']['EntityList'][0][
-                'ItemID']
             self.port2 = self.file_data['PortHandler']['EntityList'][1][
                 'PortRef']['PortIndex']
-            self.port2_uid = self.file_data['PortHandler']['EntityList'][1][
-                'ItemID']
             self.throughput_enable = True if self.file_data[
                 'TestOptions']['TestTypeOptionMap']['Throughput'][
                     'Enabled'] == 'true' else False
@@ -290,12 +284,8 @@ class XMLConfig(object):
             'ModuleIndex'] = self.module2
         self.file_data['PortHandler']['EntityList'][0]['PortRef'][
             'PortIndex'] = self.port1
-        self.file_data['PortHandler']['EntityList'][0][
-            'ItemID'] = self.port1_uid
         self.file_data['PortHandler']['EntityList'][1]['PortRef'][
             'PortIndex'] = self.port2
-        self.file_data['PortHandler']['EntityList'][1][
-            'ItemID'] = self.port2_uid
         self.file_data['StreamProfileHandler']['EntityList'][0][
             'StreamConfig']['HeaderSegments'] = self.segment1
         self.file_data['StreamProfileHandler']['EntityList'][1][
