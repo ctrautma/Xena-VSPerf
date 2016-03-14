@@ -46,7 +46,7 @@ from collections import OrderedDict
 # XenaDriver
 import XenaDriver
 from XenaDriver import line_percentage
-from XenaXML import XMLConfig
+from xena_json import XenaJSON
 
 # scapy imports
 # pip install scapy to install on python 2.x
@@ -280,7 +280,7 @@ class Xena(object):
         :return: None
         """
         try:
-            xml = XMLConfig('./profiles/baseconfig.x2544')
+            xml = XenaJSON('./profiles/baseconfig.x2544')
             xml.trials = trials
             xml.duration = self._duration
             xml.loss_rate = loss_rate

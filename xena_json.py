@@ -30,11 +30,11 @@ import scapy.layers.inet as inet
 _LOGGER = logging.getLogger(__name__)
 
 
-class XMLConfig(object):
+class XenaJSON(object):
     """
     Class to modify and read Xena JSON configuration files.
     """
-    def __init__(self, xml_path='./profiles/baseconfig.x2544'):
+    def __init__(self, json_path='./profiles/baseconfig.x2544'):
         """
         Constructor
         :param xml_path: path to JSON file to read. Expected files must have
@@ -42,7 +42,7 @@ class XMLConfig(object):
         :return: XMLConfig object
         """
 
-        self.xml_path = xml_path
+        self.json_path = json_path
 
         self.file_data = dict()
 
@@ -247,7 +247,7 @@ class XMLConfig(object):
         :return: Boolean if success, False if failure.
         """
         try:
-            with open(self.xml_path, 'r', encoding='utf-8') as data_file:
+            with open(self.json_path, 'r', encoding='utf-8') as data_file:
                 self.file_data = json.loads(data_file.read())
                 return True
         except ValueError as exc:
@@ -256,7 +256,7 @@ class XMLConfig(object):
                 "Exception with json read: {}".format(exc))
         except IOError as exc:
             _LOGGER.exception('Exception during file open: {} file={}'.format(
-                exc, self.xml_path))
+                exc, self.json_path))
             return False
 
     def write_config(self):
@@ -337,34 +337,34 @@ def encode_byte_array(byte_arr):
 
 
 if __name__ == "__main__":
-    print("Running UnitTest for XenaXML")
-    XML = XMLConfig()
-    XML.build_l2_header(dst_mac='ff:ff:ff:ff:ff:ff',
-                        src_mac='ee:ee:ee:ee:ee:ee')
-    XML.build_l3_header_ip4(src_ip='192.168.100.2', dst_ip='192.168.100.3',
-                            protocol='udp')
-    XML.trials = 2
-    XML.duration = 15
-    XML.loss_rate = 0
-    XML.custom_packet_sizes = [64]
-    XML.add_header_segments()
-    XML.write_config()
-    XML.write_file('./testthis.x2544')
-    XML = XMLConfig('./testthis.x2544')
+    print("Running UnitTest for XenaJSON")
+    JSON = XenaJSON()
+    JSON.build_l2_header(dst_mac='ff:ff:ff:ff:ff:ff',
+                         src_mac='ee:ee:ee:ee:ee:ee')
+    JSON.build_l3_header_ip4(src_ip='192.168.100.2', dst_ip='192.168.100.3',
+                             protocol='udp')
+    JSON.trials = 2
+    JSON.duration = 15
+    JSON.loss_rate = 0
+    JSON.custom_packet_sizes = [64]
+    JSON.add_header_segments()
+    JSON.write_config()
+    JSON.write_file('./testthis.x2544')
+    JSON = XenaJSON('./testthis.x2544')
     for i in decode_byte_array(
-            XML.file_data['StreamProfileHandler']['EntityList'][0][
+            JSON.file_data['StreamProfileHandler']['EntityList'][0][
                 'StreamConfig']['HeaderSegments'][0]['SegmentValue']):
         print(i)
     for i in decode_byte_array(
-            XML.file_data['StreamProfileHandler']['EntityList'][0][
+            JSON.file_data['StreamProfileHandler']['EntityList'][0][
                 'StreamConfig']['HeaderSegments'][1]['SegmentValue']):
         print(i)
     print("src and dst swapped")
     for i in decode_byte_array(
-            XML.file_data['StreamProfileHandler']['EntityList'][1][
+            JSON.file_data['StreamProfileHandler']['EntityList'][1][
                 'StreamConfig']['HeaderSegments'][0]['SegmentValue']):
         print(i)
     for i in decode_byte_array(
-            XML.file_data['StreamProfileHandler']['EntityList'][1][
+            JSON.file_data['StreamProfileHandler']['EntityList'][1][
                 'StreamConfig']['HeaderSegments'][1]['SegmentValue']):
         print(i)
