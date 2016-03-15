@@ -279,37 +279,37 @@ class Xena(object):
         :param multi_stream: This is changing, do not use
         :return: None
         """
+        # enable micro TPLD if byte size is 64 with vlan
+        if (self._params['traffic']['vlan']['enabled'] and
+                self._params['traffic']['l2']['framesize'] == 64):
+            tpld = True
+        else:
+            tpld = False
         try:
-            xml = XenaJSON('./profiles/baseconfig.x2544')
-            xml.trials = trials
-            xml.duration = self._duration
-            xml.loss_rate = loss_rate
-            xml.custom_packet_sizes = [
-                self._params['traffic']['l2']['framesize']]
-            xml.throughput_enable = (True if testtype == '2544_throughput'
-                                     else False)
-            xml.back2back_enable = True if testtype == '2544_b2b' else False
+            j_file = XenaJSON('./profiles/baseconfig.x2544')
+            j_file.set_test_options(
+                packet_sizes=self._params['traffic']['l2']['framesize'],
+                iterations=trials, loss_rate=loss_rate,
+                duration=self._duration, micro_tpld=tpld)
+            if testtype == '2544_throughput':
+                j_file.enable_throughput_test()
+            elif testtype == '2544_b2b':
+                j_file.enable_back2back_test()
 
-            xml.build_l2_header(dst_mac=self._params['traffic']['l2']['dstmac'],
-                                src_mac=self._params['traffic']['l2']['srcmac'])
-            if (self._params['traffic']['l3']['srcip'] != '0.0.0.0' or
-                    self._params['traffic']['l3']['dstip'] != '0.0.0.0'):
-                xml.build_l3_header_ip4(
-                    src_ip=self._params['traffic']['l3']['srcip'],
-                    dst_ip=self._params['traffic']['l3']['dstip'],
-                    protocol=self._params['traffic']['l3']['proto'])
+            j_file.set_header_layer2(
+                dst_mac=self._params['traffic']['l2']['dstmac'],
+                src_mac=self._params['traffic']['l2']['srcmac'])
+            j_file.set_header_layer3(
+                src_ip=self._params['traffic']['l3']['srcip'],
+                dst_ip=self._params['traffic']['l3']['dstip'],
+                protocol=self._params['traffic']['l3']['proto'])
             if self._params['traffic']['vlan']['enabled']:
-                xml.build_vlan_header(
+                j_file.set_header_vlan(
                     vlan_id=self._params['traffic']['vlan']['id'],
                     id=self._params['traffic']['vlan']['cfi'],
                     prio=self._params['traffic']['vlan']['priority'])
-                # need micro payloads if packet size 64 and vlan enabled
-                if self._params['traffic']['l2']['framesize'] == 64:
-                    xml.microTPLD = True
-
-            xml.add_header_segments()
-            xml.write_config()
-            xml.write_file('./2bUsed.x2544')
+            j_file.add_header_segments()
+            j_file.write_config()
         except Exception as exc:
             self._logger.exception(
                 "Error during Xena XML setup: {}".format(exc))

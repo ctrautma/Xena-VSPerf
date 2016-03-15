@@ -21,6 +21,7 @@ Xena XML module
 """
 
 import base64
+from collections import OrderedDict
 import json
 import logging
 import uuid
@@ -37,49 +38,17 @@ class XenaJSON(object):
     def __init__(self, json_path='./profiles/baseconfig.x2544'):
         """
         Constructor
-        :param xml_path: path to JSON file to read. Expected files must have
+        :param json_path: path to JSON file to read. Expected files must have
          two module ports with each port having its own stream config profile.
-        :return: XMLConfig object
+        :return: XenaJSON object
         """
+        self.json_data = read_json_file(json_path)
 
-        self.json_path = json_path
-
-        self.file_data = dict()
-
-        # Test config info
-        self.trials = None
-        self.duration = None
-        self.loss_rate = None
-        self.custom_packet_sizes = list()
-
-        # Xena Chassis info
-        self.chassis_ip = None
-        self.chassis_pwd = None
-
-        # Physical Xena info
-        self.module1 = None
-        self.module2 = None
-        self.port1 = None
-        self.port2 = None
-        self.chassis_id = None
-
-        # Flow info
-        self.micro_tpld = None
-
-        # header info
-        self.layer2 = None
-        self.layer3 = None
-        self.vlan = None
-        self.segment1 = list()
-        self.segment2 = list()
-
-        # test type
-        self.throughput_enable = None
-        self.back2back_enable = None
-
-        # Read the xml file and configuration settings
-        self.read_file()
-        self.read_config()
+        self.packet_data = OrderedDict()
+        self.packet_data['layer2'] = None
+        self.packet_data['vlan'] = None
+        self.packet_data['layer3'] = None
+        self.packet_data['layer4'] = None
 
     def add_header_segments(self):
         """
@@ -87,72 +56,106 @@ class XenaJSON(object):
         :return: None
         """
         packet = self.create_packet_header()
+        segment1 = list()
+        segment2 = list()
         header_pos = 0
-        if self.layer2:
-            packet_bytes = bytes(packet)
-            layer2 = packet_bytes[:len(self.layer2)]
-            value = encode_byte_array(layer2)
-            value = value.decode('utf-8')
+        if self.packet_data['layer2']:
+            layer2 = packet[0][header_pos: len(self.packet_data['layer2'][0])]
+            segment1.append(create_segment(
+                "ETHERNET", encode_byte_array(layer2).decode('utf-8')))
+            layer2 = packet[1][header_pos: len(self.packet_data['layer2'][1])]
+            segment2.append(create_segment(
+                "ETHERNET", encode_byte_array(layer2).decode('utf-8')))
+            header_pos = len(self.packet_data['layer2'][0])
+        if self.packet_data['vlan']:
+            vlan = packet[0][header_pos: len(
+                self.packet_data['vlan'][0]) + header_pos]
+            segment1.append(create_segment(
+                "VLAN", encode_byte_array(vlan).decode('utf-8')))
+            segment2.append(create_segment(
+                "VLAN", encode_byte_array(vlan).decode('utf-8')))
+            header_pos += len(self.packet_data['vlan'])
+        if self.packet_data['layer3']:
+            layer3 = packet[0][header_pos: len(
+                self.packet_data['layer3'][0]) + header_pos]
+            segment1.append(create_segment(
+                "IP", encode_byte_array(layer3).decode('utf-8')))
+            layer3 = packet[1][header_pos: len(
+                self.packet_data['layer3'][1]) + header_pos]
+            segment2.append(create_segment(
+                "IP", encode_byte_array(layer3).decode('utf-8')))
+            header_pos += len(self.packet_data['layer3'])
 
-            # swap dst and src for opposite port header info
-            op_l2 = layer2[6:12] + layer2[:6] + layer2[12:]
-            opp_value = encode_byte_array(op_l2)
-            opp_value = opp_value.decode('utf-8')
+        self.json_data['StreamProfileHandler']['EntityList'][0][
+            'StreamConfig']['HeaderSegments'] = segment1
+        self.json_data['StreamProfileHandler']['EntityList'][1][
+            'StreamConfig']['HeaderSegments'] = segment2
 
-            seg = {"SegmentType": "ETHERNET",
-                   "SegmentValue": value,
-                   "ItemID": str(uuid.uuid4()),
-                   "ParentID": "",
-                   "Label": ""}
-            self.segment1.append(seg)
-            seg = {"SegmentType": "ETHERNET",
-                   "SegmentValue": opp_value,
-                   "ItemID": str(uuid.uuid4()),
-                   "ParentID": "",
-                   "Label": ""}
-            self.segment2.append(seg)
-            header_pos += len(self.layer2)
-        if self.vlan:
-            value = bytes(packet)
-            value = value[header_pos: len(self.vlan) + header_pos]
-            value = encode_byte_array(value)
-            value = value.decode('utf-8')
-            seg = {"SegmentType": "VLAN",
-                   "SegmentValue": value,
-                   "ItemID": str(uuid.uuid4()),
-                   "ParentID": "",
-                   "Label": ""}
-            self.segment1.append(seg)
-            seg['ItemID'] = str(uuid.uuid4())
-            self.segment2.append(seg)
-            header_pos += len(self.vlan)
-        if self.layer3:
-            packet_bytes = bytes(packet)
-            layer3 = packet_bytes[header_pos: len(self.layer3) + header_pos]
-            value = encode_byte_array(layer3)
-            value = value.decode('utf-8')
+    def create_packet_header(self):
+        """
+        Create the scapy packet header based on what has been built in this
+        instance using the set header methods. Return tuple of the two byte
+        arrays, one for each port.
+        :return: Scapy packet headers as bytearrays
+        """
+        if not self.packet_data['layer2']:
+            _LOGGER.warning('Using dummy info for layer 2 in Xena JSON file')
+            self.set_header_layer2()
+        packet1, packet2 = (self.packet_data['layer2'][0],
+                            self.packet_data['layer2'][1])
+        for packet_header in list(self.packet_data.copy().values())[1:]:
+            if packet_header:
+                packet1 /= packet_header[0]
+                packet2 /= packet_header[1]
+        ret = (bytes(packet1), bytes(packet2))
+        return ret
 
-            # swap dst and src for opposite port header info
-            op_l3 = layer3[:12] + layer3[16:20] + layer3[12:16] + layer3[20:]
-            opp_value = encode_byte_array(op_l3)
-            opp_value = opp_value.decode('utf-8')
+    def disable_back2back_test(self):
+        """
+        Disable the rfc2544 back to back test
+        :return: None
+        """
+        self.json_data['TestOptions']['TestTypeOptionMap']['Back2Back'][
+            'Enabled'] = 'false'
 
-            seg = {"SegmentType": "IP",
-                   "SegmentValue": value,
-                   "ItemID": str(uuid.uuid4()),
-                   "ParentID": "",
-                   "Label": ""}
-            self.segment1.append(seg)
-            seg = {"SegmentType": "IP",
-                   "SegmentValue": opp_value,
-                   "ItemID": str(uuid.uuid4()),
-                   "ParentID": "",
-                   "Label": ""}
-            self.segment2.append(seg)
-            header_pos += len(self.layer3)
+    def disable_throughput_test(self):
+        """
+        Disable the rfc2544 throughput test
+        :return: None
+        """
+        self.json_data['TestOptions']['TestTypeOptionMap']['Throughput'][
+            'Enabled'] = 'false'
 
-    def build_l2_header(self, dst_mac='aa:aa:aa:aa:aa:aa',
-                        src_mac='bb:bb:bb:bb:bb:bb', **kwargs):
+    def enable_back2back_test(self):
+        """
+        Enable the rfc2544 back to back test
+        :return: None
+        """
+        self.json_data['TestOptions']['TestTypeOptionMap']['Back2Back'][
+            'Enabled'] = 'true'
+
+    def enable_throughput_test(self):
+        """
+        Enable the rfc2544 throughput test
+        :return: None
+        """
+        self.json_data['TestOptions']['TestTypeOptionMap']['Throughput'][
+            'Enabled'] = 'true'
+
+    def set_chassis_info(self, hostname, pwd):
+        """
+        Set the chassis info
+        :param hostname: hostname as string of ip
+        :param pwd: password to chassis as string
+        :return: None
+        """
+        self.json_data['ChassisManager']['ChassisList'][0][
+            'HostName'] = hostname
+        self.json_data['ChassisManager']['ChassisList'][0][
+            'Password'] = pwd
+
+    def set_header_layer2(self, dst_mac='aa:aa:aa:aa:aa:aa',
+                          src_mac='bb:bb:bb:bb:bb:bb', **kwargs):
         """
         Build a scapy Ethernet L2 object
         :param dst_mac: destination mac as string. Example "aa:aa:aa:aa:aa:aa"
@@ -160,10 +163,12 @@ class XenaJSON(object):
         :param kwargs: Extra params per scapy usage.
         :return: None
         """
-        self.layer2 = inet.Ether(dst=dst_mac, src=src_mac, **kwargs)
+        self.packet_data['layer2'] = [
+            inet.Ether(dst=dst_mac, src=src_mac, **kwargs),
+            inet.Ether(dst=src_mac, src=dst_mac, **kwargs)]
 
-    def build_l3_header_ip4(self, src_ip='192.168.0.2', dst_ip='192.168.0.3',
-                            protocol='UDP', **kwargs):
+    def set_header_layer3(self, src_ip='192.168.0.2', dst_ip='192.168.0.3',
+                          protocol='UDP', **kwargs):
         """
         Build a scapy IPV4 L3 object
         :param src_ip: source IP as string in dot notaion format
@@ -172,148 +177,82 @@ class XenaJSON(object):
         :param kwargs: Extra params per scapy usage
         :return: None
         """
-        self.layer3 = inet.IP(src=src_ip, dst=dst_ip, proto=protocol.lower(),
-                              **kwargs)
+        self.packet_data['layer3'] = [
+            inet.IP(src=src_ip, dst=dst_ip, proto=protocol.lower(), **kwargs),
+            inet.IP(src=dst_ip, dst=src_ip, proto=protocol.lower(), **kwargs)]
 
-    def build_vlan_header(self, vlan_id=1, **kwargs):
+    def set_header_vlan(self, vlan_id=1, **kwargs):
         """
         Build a Dot1Q scapy object.
         :param vlan_id: The VLAN ID
         :param kwargs: Extra params per scapy usage
         :return: None
         """
-        self.vlan = inet.Dot1Q(vlan=vlan_id, **kwargs)
+        self.packet_data['vlan'] = [
+            inet.Dot1Q(vlan=vlan_id, **kwargs),
+            inet.Dot1Q(vlan=vlan_id, **kwargs)]
 
-    def create_packet_header(self):
+    def set_port(self, index, module, port):
         """
-        Create the scapy packet header based on what has been built in this
-        instance using the build methods.
-        :return: Scapy packet header
-        """
-        packet = inet.Ether()
-        if self.layer2:
-            packet = self.layer2
-        if self.vlan:
-            packet /= self.vlan
-        if self.layer3:
-            packet /= self.layer3
-        return packet
-
-    def read_config(self):
-        """
-        Read the config from the open JSON file.
-        :return: Boolean if success, False if failure.
-        """
-        try:
-            self.back2back_enable = True if self.file_data[
-                'TestOptions']['TestTypeOptionMap']['Back2Back'][
-                    'Enabled'] == 'true' else False
-            self.chassis_ip = self.file_data['ChassisManager']['ChassisList'][
-                0]['HostName']
-            self.chassis_pwd = self.file_data['ChassisManager'][
-                'ChassisList'][0]['Password']
-            self.custom_packet_sizes = self.file_data['TestOptions'][
-                'PacketSizes']['CustomPacketSizes']
-            self.duration = self.file_data['TestOptions'][
-                'TestTypeOptionMap']['Throughput']['Duration']
-            self.loss_rate = self.file_data['TestOptions'][
-                'TestTypeOptionMap']['Throughput']['RateIterationOptions'][
-                    'AcceptableLoss']
-            self.micro_tpld = True if self.file_data[
-                'TestOptions']['FlowCreationOptions'][
-                    'UseMicroTpldOnDemand'] == 'true' else False
-            self.module1 = self.file_data['PortHandler']['EntityList'][0][
-                'PortRef']['ModuleIndex']
-            self.module2 = self.file_data['PortHandler']['EntityList'][1][
-                'PortRef']['ModuleIndex']
-            self.port1 = self.file_data['PortHandler']['EntityList'][0][
-                'PortRef']['PortIndex']
-            self.port2 = self.file_data['PortHandler']['EntityList'][1][
-                'PortRef']['PortIndex']
-            self.throughput_enable = True if self.file_data[
-                'TestOptions']['TestTypeOptionMap']['Throughput'][
-                    'Enabled'] == 'true' else False
-            self.trials = self.file_data['TestOptions']['TestTypeOptionMap'][
-                'Throughput']['Iterations']
-            return True
-        except KeyError as exc:
-            _LOGGER.exception(
-                'Error in XML file, setting not found: {}'.format(exc))
-            return False
-
-    def read_file(self):
-        """
-        Read the file as specified in the instance xml_path attribute.
-        :return: Boolean if success, False if failure.
-        """
-        try:
-            with open(self.json_path, 'r', encoding='utf-8') as data_file:
-                self.file_data = json.loads(data_file.read())
-                return True
-        except ValueError as exc:
-            # general json exception, Python 3.5 adds new exception type
-            _LOGGER.exception(
-                "Exception with json read: {}".format(exc))
-        except IOError as exc:
-            _LOGGER.exception('Exception during file open: {} file={}'.format(
-                exc, self.json_path))
-            return False
-
-    def write_config(self):
-        """
-        Write the config in preparation for exporting the data to a JSON file.
+        Set the module and port for the 0 index port to use with the test
+        :param index: Index of port to set, 0 = port1, 1=port2, etc..
+        :param module: module location as int
+        :param port: port location in module as int
         :return: None
         """
-        self.file_data['TestOptions']['TestTypeOptionMap']['Back2Back'][
-            'Enabled'] = 'true' if self.back2back_enable else 'false'
-        self.file_data['ChassisManager']['ChassisList'][0][
-            'HostName'] = self.chassis_ip
-        self.file_data['ChassisManager']['ChassisList'][0][
-            'Password'] = self.chassis_pwd
-        self.file_data['TestOptions']['PacketSizes'][
-            'CustomPacketSizes'] = self.custom_packet_sizes
-        self.file_data['TestOptions']['TestTypeOptionMap']['Throughput'][
-            'Duration'] = self.duration
-        self.file_data['TestOptions']['TestTypeOptionMap']['Throughput'][
-            'RateIterationOptions']['AcceptableLoss'] = self.loss_rate
-        self.file_data['TestOptions']['FlowCreationOptions'][
-            'UseMicroTpldOnDemand'] = 'true' if self.micro_tpld else 'false'
-        self.file_data['PortHandler']['EntityList'][0]['PortRef'][
-            'ModuleIndex'] = self.module1
-        self.file_data['PortHandler']['EntityList'][1]['PortRef'][
-            'ModuleIndex'] = self.module2
-        self.file_data['PortHandler']['EntityList'][0]['PortRef'][
-            'PortIndex'] = self.port1
-        self.file_data['PortHandler']['EntityList'][1]['PortRef'][
-            'PortIndex'] = self.port2
-        self.file_data['StreamProfileHandler']['EntityList'][0][
-            'StreamConfig']['HeaderSegments'] = self.segment1
-        self.file_data['StreamProfileHandler']['EntityList'][1][
-            'StreamConfig']['HeaderSegments'] = self.segment2
-        self.file_data['TestOptions']['TestTypeOptionMap']['Throughput'][
-            'Enabled'] = 'true' if self.throughput_enable else 'false'
-        self.file_data['TestOptions']['TestTypeOptionMap']['Throughput'][
-            'Iterations'] = self.trials
+        self.json_data['PortHandler']['EntityList'][index]['PortRef'][
+            'ModuleIndex'] = module
+        self.json_data['PortHandler']['EntityList'][index]['PortRef'][
+            'PortIndex'] = port
 
-    def write_file(self, output_path):
+    def set_test_options(self, packet_sizes, duration, iterations, loss_rate,
+                         micro_tpld=False):
         """
-        Write the file as specified in the output_path param
-        :param output_path: path to write out in string format
-        :return: Boolean if success, False if failure.
+        Set the test options
+        :param packet_sizes: List of packet sizes to test, single int entry is
+         acceptable for one packet size testing
+        :param duration: time for each test in seconds as int
+        :param iterations: number of iterations of testing as int
+        :param loss_rate: acceptable loss rate as float
+        :param micro_tpld: boolean if micro_tpld should be enabled or disabled
+        :return: None
         """
-        try:
-            with open(output_path, 'w', encoding='utf-8') as fileh:
-                json.dump(self.file_data, fileh, indent=2, sort_keys=True,
-                          ensure_ascii=True)
-            return True
-        except ValueError as exc:
-            # general json exception, Python 3.5 adds new exception type
-            _LOGGER.exception(
-                "Exception with json write: {}".format(exc))
-        except IOError as exc:
-            _LOGGER.exception('Exception during file open: {} file={}'.format(
-                exc, output_path))
-            return False
+        if type(packet_sizes) == int:
+            packet_sizes = [packet_sizes]
+        self.json_data['TestOptions']['PacketSizes'][
+            'CustomPacketSizes'] = packet_sizes
+        self.json_data['TestOptions']['TestTypeOptionMap']['Throughput'][
+            'Duration'] = duration
+        self.json_data['TestOptions']['TestTypeOptionMap']['Throughput'][
+            'RateIterationOptions']['AcceptableLoss'] = loss_rate
+        self.json_data['TestOptions']['FlowCreationOptions'][
+            'UseMicroTpldOnDemand'] = 'true' if micro_tpld else 'false'
+        self.json_data['TestOptions']['TestTypeOptionMap']['Throughput'][
+            'Iterations'] = iterations
+
+    def write_config(self, path='./2bUsed.x2544'):
+        """
+        Write the config to out as file
+        :param path: Output file to export the json data to
+        :return: None
+        """
+        if not write_json_file(self.json_data, path):
+            raise RuntimeError("Could not write out file, please check config")
+
+
+def create_segment(header_type, encode_64_string):
+    """
+    Create segment for JSON file
+    :param header_type: Type of header as string
+    :param encode_64_string: 64 byte encoded string value of the hex bytes
+    :return: segment as dictionary
+    """
+    return {
+        "SegmentType": header_type.upper(),
+        "SegmentValue": encode_64_string,
+        "ItemID": str(uuid.uuid4()),
+        "ParentID": "",
+        "Label": ""}
 
 
 def decode_byte_array(enc_str):
@@ -336,35 +275,114 @@ def encode_byte_array(byte_arr):
     return enc_string
 
 
+def print_json_report(json_data):
+    """
+    Print out info from the json data
+    :param json_data: json loaded data from json.loads
+    :return: None
+    """
+    print("<<Xena JSON Config Report>>\n")
+    try:
+        print("### Chassis Info ###")
+        print("Chassis IP: {}".format(json_data['ChassisManager'][
+            'ChassisList'][0]['HostName']))
+        print("Chassis Password: {}".format(json_data['ChassisManager'][
+            'ChassisList'][0]['Password']))
+        print("### Port Configuration ###")
+        print("Port 1: {}/{}".format(json_data['PortHandler']['EntityList'][0][
+            'PortRef']['ModuleIndex'], json_data['PortHandler']['EntityList'][
+                0]['PortRef']['PortIndex']))
+        print("Port 2: {}/{}".format(json_data['PortHandler']['EntityList'][1][
+            'PortRef']['ModuleIndex'], json_data['PortHandler']['EntityList'][
+                1]['PortRef']['PortIndex']))
+        print("### Tests Enabled ###")
+        print("Back2Back Enabled: {}".format(json_data['TestOptions'][
+            'TestTypeOptionMap']['Back2Back']['Enabled']))
+        print("Throughput Enabled: {}".format(json_data['TestOptions'][
+            'TestTypeOptionMap']['Throughput']['Enabled']))
+        print("### Test Options ###")
+        print("Packet Sizes: {}".format(json_data['TestOptions'][
+            'PacketSizes']['CustomPacketSizes']))
+        print("Test duration: {}".format(json_data['TestOptions'][
+            'TestTypeOptionMap']['Throughput']['Duration']))
+        print("Acceptable loss rate: {}".format(json_data['TestOptions'][
+            'TestTypeOptionMap']['Throughput']['RateIterationOptions'][
+                'AcceptableLoss']))
+        print("Micro TPLD enabled: {}".format(json_data['TestOptions'][
+            'FlowCreationOptions']['UseMicroTpldOnDemand']))
+        print("Test iterations: {}".format(json_data['TestOptions'][
+            'TestTypeOptionMap']['Throughput']['Iterations']))
+        if 'StreamConfig' in json_data['StreamProfileHandler']['EntityList'][0]:
+            print("### Header segments ###")
+            for seg in json_data['StreamProfileHandler']['EntityList']:
+                for header in seg['StreamConfig']['HeaderSegments']:
+                    print("Type: {}".format(
+                        header['SegmentType']))
+                    print("Value: {}".format(decode_byte_array(
+                        header['SegmentValue'])))
+    except KeyError as exc:
+        print("Error setting not found in JSON data: {}".format(exc))
+
+
+def read_json_file(json_file):
+    """
+    Read the json file path and return a dictionary of the data
+    :param json_file: path to json file
+    :return: dictionary of json data
+    """
+    try:
+        with open(json_file, 'r', encoding='utf-8') as data_file:
+            file_data = json.loads(data_file.read())
+    except ValueError as exc:
+        # general json exception, Python 3.5 adds new exception type
+        _LOGGER.exception(
+            "Exception with json read: {}".format(exc))
+        raise
+    except IOError as exc:
+        _LOGGER.exception('Exception during file open: {} file={}'.format(
+            exc, json_file))
+        raise
+    return file_data
+
+
+def write_json_file(json_data, output_path):
+    """
+    Write out the dictionary of data to a json file
+    :param json_data: dictionary of json data
+    :param output_path: file path to write output
+    :return: Boolean if success
+    """
+    try:
+        with open(output_path, 'w', encoding='utf-8') as fileh:
+            json.dump(json_data, fileh, indent=2, sort_keys=True,
+                      ensure_ascii=True)
+        return True
+    except ValueError as exc:
+        # general json exception, Python 3.5 adds new exception type
+        _LOGGER.exception(
+            "Exception with json write: {}".format(exc))
+    except IOError as exc:
+        _LOGGER.exception('Exception during file open: {} file={}'.format(
+            exc, output_path))
+        return False
+
+
 if __name__ == "__main__":
     print("Running UnitTest for XenaJSON")
     JSON = XenaJSON()
-    JSON.build_l2_header(dst_mac='ff:ff:ff:ff:ff:ff',
-                         src_mac='ee:ee:ee:ee:ee:ee')
-    JSON.build_l3_header_ip4(src_ip='192.168.100.2', dst_ip='192.168.100.3',
-                             protocol='udp')
-    JSON.trials = 2
-    JSON.duration = 15
-    JSON.loss_rate = 0
-    JSON.custom_packet_sizes = [64]
+    print_json_report(JSON.json_data)
+    JSON.set_chassis_info('10.19.15.55', 'vsperf')
+    JSON.set_port(0, 1, 0)
+    JSON.set_port(1, 1, 1)
+    JSON.set_header_layer2(dst_mac='ff:ff:ff:ff:ff:ff',
+                           src_mac='ee:ee:ee:ee:ee:ee')
+    JSON.set_header_vlan(vlan_id=5)
+    JSON.set_header_layer3(src_ip='192.168.100.2', dst_ip='192.168.100.3',
+                           protocol='udp')
+    JSON.set_test_options(packet_sizes=[64], duration=10, iterations=1,
+                          loss_rate=0.0, micro_tpld=True)
     JSON.add_header_segments()
-    JSON.write_config()
-    JSON.write_file('./testthis.x2544')
+    write_json_file(JSON.json_data, './testthis.x2544')
     JSON = XenaJSON('./testthis.x2544')
-    for i in decode_byte_array(
-            JSON.file_data['StreamProfileHandler']['EntityList'][0][
-                'StreamConfig']['HeaderSegments'][0]['SegmentValue']):
-        print(i)
-    for i in decode_byte_array(
-            JSON.file_data['StreamProfileHandler']['EntityList'][0][
-                'StreamConfig']['HeaderSegments'][1]['SegmentValue']):
-        print(i)
-    print("src and dst swapped")
-    for i in decode_byte_array(
-            JSON.file_data['StreamProfileHandler']['EntityList'][1][
-                'StreamConfig']['HeaderSegments'][0]['SegmentValue']):
-        print(i)
-    for i in decode_byte_array(
-            JSON.file_data['StreamProfileHandler']['EntityList'][1][
-                'StreamConfig']['HeaderSegments'][1]['SegmentValue']):
-        print(i)
+    print_json_report(JSON.json_data)
+
