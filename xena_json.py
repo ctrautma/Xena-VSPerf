@@ -230,6 +230,32 @@ class XenaJSON(object):
         self.json_data['TestOptions']['TestTypeOptionMap']['Throughput'][
             'Iterations'] = iterations
 
+    def set_topology_blocks(self):
+        """
+        Set the test topology to a West to East config for half duplex flow with
+        port 0 as the sender and port 1 as the receiver.
+        :return: None
+        """
+        self.json_data['TestOptions']['TopologyConfig']['Topology'] = 'BLOCKS'
+        self.json_data['TestOptions']['TopologyConfig'][
+            'Direction'] = 'WEST_EAST'
+        self.json_data['PortHandler']['EntityList'][0][
+            'PortGroup'] = "WEST"
+        self.json_data['PortHandler']['EntityList'][1][
+            'PortGroup'] = "EAST"
+
+    def set_topology_mesh(self):
+        """
+        Set the test topology to Mesh for bi directional full duplex flow
+        :return: None
+        """
+        self.json_data['TestOptions']['TopologyConfig']['Topology'] = 'MESH'
+        self.json_data['TestOptions']['TopologyConfig']['Direction'] = 'BIDIR'
+        self.json_data['PortHandler']['EntityList'][0][
+            'PortGroup'] = "UNDEFINED"
+        self.json_data['PortHandler']['EntityList'][1][
+            'PortGroup'] = "UNDEFINED"
+
     def write_config(self, path='./2bUsed.x2544'):
         """
         Write the config to out as file
@@ -289,18 +315,23 @@ def print_json_report(json_data):
         print("Chassis Password: {}".format(json_data['ChassisManager'][
             'ChassisList'][0]['Password']))
         print("### Port Configuration ###")
-        print("Port 1: {}/{}".format(json_data['PortHandler']['EntityList'][0][
-            'PortRef']['ModuleIndex'], json_data['PortHandler']['EntityList'][
-                0]['PortRef']['PortIndex']))
-        print("Port 2: {}/{}".format(json_data['PortHandler']['EntityList'][1][
-            'PortRef']['ModuleIndex'], json_data['PortHandler']['EntityList'][
-                1]['PortRef']['PortIndex']))
+        print("Port 1: {}/{} group: {}".format(
+            json_data['PortHandler']['EntityList'][0]['PortRef']['ModuleIndex'],
+            json_data['PortHandler']['EntityList'][0]['PortRef']['PortIndex'],
+            json_data['PortHandler']['EntityList'][0]['PortGroup']))
+        print("Port 2: {}/{} group: {}pylint ".format(
+            json_data['PortHandler']['EntityList'][1]['PortRef']['ModuleIndex'],
+            json_data['PortHandler']['EntityList'][1]['PortRef']['PortIndex'],
+            json_data['PortHandler']['EntityList'][1]['PortGroup']))
         print("### Tests Enabled ###")
         print("Back2Back Enabled: {}".format(json_data['TestOptions'][
             'TestTypeOptionMap']['Back2Back']['Enabled']))
         print("Throughput Enabled: {}".format(json_data['TestOptions'][
             'TestTypeOptionMap']['Throughput']['Enabled']))
         print("### Test Options ###")
+        print("Test topology: {}/{}".format(
+            json_data['TestOptions']['TopologyConfig']['Topology'],
+            json_data['TestOptions']['TopologyConfig']['Direction']))
         print("Packet Sizes: {}".format(json_data['TestOptions'][
             'PacketSizes']['CustomPacketSizes']))
         print("Test duration: {}".format(json_data['TestOptions'][
@@ -382,6 +413,7 @@ if __name__ == "__main__":
     JSON.set_test_options(packet_sizes=[64], duration=10, iterations=1,
                           loss_rate=0.0, micro_tpld=True)
     JSON.add_header_segments()
+    JSON.set_topology_blocks()
     write_json_file(JSON.json_data, './testthis.x2544')
     JSON = XenaJSON('./testthis.x2544')
     print_json_report(JSON.json_data)
