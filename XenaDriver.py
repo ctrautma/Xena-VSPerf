@@ -997,7 +997,7 @@ def packets_per_second(packets, time_in_sec):
 
 if __name__ == '__main__':
     print("Running XenaDRIVER UnitTest")
-    PACKET_SIZE = 64
+    PACKET_SIZE = 128
     DURATION = 10
     DRIVER = XenaSocketDriver('10.19.15.19')
     X_MANAGER = XenaManager(DRIVER, 'vsperf', 'xena')
