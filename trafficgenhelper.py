@@ -30,14 +30,14 @@ TRAFFIC_DEFAULTS = {
     'flow_type' : 'port',                   # used by vswitch implementation
 
     'l2': {
-        'framesize': 64,
-        'srcmac': '00:00:00:00:00:00',
-        'dstmac': '00:00:00:00:00:00',
+        'framesize': 128,
+        'srcmac': 'aa:aa:aa:aa:aa:aa',
+        'dstmac': 'bb:bb:bb:bb:bb:bb',
     },
     'l3': {
         'proto': 'udp',
-        'srcip': '1.1.1.1',
-        'dstip': '90.90.90.90',
+        'srcip': '192.168.100.10',
+        'dstip': '192.168.100.11',
     },
     'l4': {
         'srcport': 3000,
