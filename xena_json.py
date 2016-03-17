@@ -66,7 +66,7 @@ class XenaJSON(object):
             layer2 = packet[1][header_pos: len(self.packet_data['layer2'][1])]
             segment2.append(create_segment(
                 "ETHERNET", encode_byte_array(layer2).decode('utf-8')))
-            header_pos = len(self.packet_data['layer2'][0])
+            header_pos = len(layer2)
         if self.packet_data['vlan']:
             vlan = packet[0][header_pos: len(
                 self.packet_data['vlan'][0]) + header_pos]
@@ -74,7 +74,7 @@ class XenaJSON(object):
                 "VLAN", encode_byte_array(vlan).decode('utf-8')))
             segment2.append(create_segment(
                 "VLAN", encode_byte_array(vlan).decode('utf-8')))
-            header_pos += len(self.packet_data['vlan'])
+            header_pos += len(vlan)
         if self.packet_data['layer3']:
             layer3 = packet[0][header_pos: len(
                 self.packet_data['layer3'][0]) + header_pos]
@@ -84,7 +84,17 @@ class XenaJSON(object):
                 self.packet_data['layer3'][1]) + header_pos]
             segment2.append(create_segment(
                 "IP", encode_byte_array(layer3).decode('utf-8')))
-            header_pos += len(self.packet_data['layer3'])
+            header_pos += len(layer3)
+        if self.packet_data['layer4']:
+            layer4 = packet[0][header_pos: len(
+                self.packet_data['layer4'][0]) + header_pos]
+            segment1.append(create_segment(
+                "UDP", encode_byte_array(layer4).decode('utf-8')))
+            layer3 = packet[1][header_pos: len(
+                self.packet_data['layer4'][1]) + header_pos]
+            segment2.append(create_segment(
+                "UDP", encode_byte_array(layer3).decode('utf-8')))
+            header_pos += len(layer4)
 
         self.json_data['StreamProfileHandler']['EntityList'][0][
             'StreamConfig']['HeaderSegments'] = segment1
@@ -170,7 +180,7 @@ class XenaJSON(object):
     def set_header_layer3(self, src_ip='192.168.0.2', dst_ip='192.168.0.3',
                           protocol='UDP', **kwargs):
         """
-        Build a scapy IPV4 L3 object
+        Build scapy IPV4 L3 objects for the json file
         :param src_ip: source IP as string in dot notaion format
         :param dst_ip: destination IP as string in dot notation format
         :param protocol: protocol for l4
@@ -180,6 +190,18 @@ class XenaJSON(object):
         self.packet_data['layer3'] = [
             inet.IP(src=src_ip, dst=dst_ip, proto=protocol.lower(), **kwargs),
             inet.IP(src=dst_ip, dst=src_ip, proto=protocol.lower(), **kwargs)]
+
+    def set_header_layer4_UDP(self, source_port, destination_port, **kwargs):
+        """
+        Build scapy UDP L4 objects for the json file
+        :param source_port: Source port as int
+        :param destination_port: Destination port as int
+        :param kwargs: Extra params per scapy usage
+        :return: None
+        """
+        self.packet_data['layer4'] = [
+            inet.UDP(sport=source_port, dport=destination_port, **kwargs),
+            inet.UDP(sport=source_port, dport=destination_port, **kwargs)]
 
     def set_header_vlan(self, vlan_id=1, **kwargs):
         """
@@ -410,6 +432,7 @@ if __name__ == "__main__":
     JSON.set_header_vlan(vlan_id=5)
     JSON.set_header_layer3(src_ip='192.168.100.2', dst_ip='192.168.100.3',
                            protocol='udp')
+    JSON.set_header_layer4_UDP(source_port=3000, destination_port=3001)
     JSON.set_test_options(packet_sizes=[64], duration=10, iterations=1,
                           loss_rate=0.0, micro_tpld=True)
     JSON.add_header_segments()
