@@ -50,12 +50,31 @@ class XenaJSON(object):
         self.packet_data['layer3'] = None
         self.packet_data['layer4'] = None
 
+    def _create_packet_header(self):
+        """
+        Create the scapy packet header based on what has been built in this
+        instance using the set header methods. Return tuple of the two byte
+        arrays, one for each port.
+        :return: Scapy packet headers as bytearrays
+        """
+        if not self.packet_data['layer2']:
+            _LOGGER.warning('Using dummy info for layer 2 in Xena JSON file')
+            self.set_header_layer2()
+        packet1, packet2 = (self.packet_data['layer2'][0],
+                            self.packet_data['layer2'][1])
+        for packet_header in list(self.packet_data.copy().values())[1:]:
+            if packet_header:
+                packet1 /= packet_header[0]
+                packet2 /= packet_header[1]
+        ret = (bytes(packet1), bytes(packet2))
+        return ret
+
     def add_header_segments(self):
         """
         Build the header segments to write to the JSON file.
         :return: None
         """
-        packet = self.create_packet_header()
+        packet = self._create_packet_header()
         segment1 = list()
         segment2 = list()
         header_pos = 0
@@ -100,25 +119,6 @@ class XenaJSON(object):
             'StreamConfig']['HeaderSegments'] = segment1
         self.json_data['StreamProfileHandler']['EntityList'][1][
             'StreamConfig']['HeaderSegments'] = segment2
-
-    def create_packet_header(self):
-        """
-        Create the scapy packet header based on what has been built in this
-        instance using the set header methods. Return tuple of the two byte
-        arrays, one for each port.
-        :return: Scapy packet headers as bytearrays
-        """
-        if not self.packet_data['layer2']:
-            _LOGGER.warning('Using dummy info for layer 2 in Xena JSON file')
-            self.set_header_layer2()
-        packet1, packet2 = (self.packet_data['layer2'][0],
-                            self.packet_data['layer2'][1])
-        for packet_header in list(self.packet_data.copy().values())[1:]:
-            if packet_header:
-                packet1 /= packet_header[0]
-                packet2 /= packet_header[1]
-        ret = (bytes(packet1), bytes(packet2))
-        return ret
 
     def disable_back2back_test(self):
         """
