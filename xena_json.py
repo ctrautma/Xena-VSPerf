@@ -341,7 +341,7 @@ def print_json_report(json_data):
             json_data['PortHandler']['EntityList'][0]['PortRef']['ModuleIndex'],
             json_data['PortHandler']['EntityList'][0]['PortRef']['PortIndex'],
             json_data['PortHandler']['EntityList'][0]['PortGroup']))
-        print("Port 2: {}/{} group: {}pylint ".format(
+        print("Port 2: {}/{} group: {}".format(
             json_data['PortHandler']['EntityList'][1]['PortRef']['ModuleIndex'],
             json_data['PortHandler']['EntityList'][1]['PortRef']['PortIndex'],
             json_data['PortHandler']['EntityList'][1]['PortGroup']))
