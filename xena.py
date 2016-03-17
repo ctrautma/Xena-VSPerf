@@ -303,7 +303,7 @@ class Xena(object):
                 src_ip=self._params['traffic']['l3']['srcip'],
                 dst_ip=self._params['traffic']['l3']['dstip'],
                 protocol=self._params['traffic']['l3']['proto'])
-            j_file.set_header_layer4(
+            j_file.set_header_layer4_UDP(
                 src_port=self._params['traffic']['l4']['scrport'],
                 dst_port=self._params['traffic']['l4']['dstport'])
             if self._params['traffic']['vlan']['enabled']:
