@@ -279,9 +279,8 @@ class Xena(object):
         :param multi_stream: This is changing, do not use
         :return: None
         """
-        # enable micro TPLD if byte size is 64 with vlan
-        if (self._params['traffic']['vlan']['enabled'] and
-                self._params['traffic']['l2']['framesize'] == 64):
+        # enable micro TPLD if byte size is 64
+        if self._params['traffic']['l2']['framesize'] == 64:
             tpld = True
         else:
             tpld = False
@@ -304,8 +303,8 @@ class Xena(object):
                 dst_ip=self._params['traffic']['l3']['dstip'],
                 protocol=self._params['traffic']['l3']['proto'])
             j_file.set_header_layer4_UDP(
-                src_port=self._params['traffic']['l4']['scrport'],
-                dst_port=self._params['traffic']['l4']['dstport'])
+                source_port=self._params['traffic']['l4']['srcport'],
+                destination_port=self._params['traffic']['l4']['dstport'])
             if self._params['traffic']['vlan']['enabled']:
                 j_file.set_header_vlan(
                     vlan_id=self._params['traffic']['vlan']['id'],
