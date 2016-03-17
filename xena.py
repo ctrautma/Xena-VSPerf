@@ -25,7 +25,6 @@ Xena Traffic Generator Model
 # TODO CT List of things that need to be completed
 # 1. Need back to back implementation
 # 2. Need to determine what multistream is
-# 3. Need to implement fps into api methods.
 
 # VSPerf imports
 from conf import settings
@@ -358,7 +357,7 @@ class Xena(object):
         s1_p0.set_on()
         s1_p0.set_packet_limit(packet_limit)
 
-        s1_p0.set_rate_fraction(1000000)
+        s1_p0.set_rate_fraction(10000 * self._params['traffic']['frame_rate'])
         s1_p0.set_packet_header(self._build_packet_header())
         # TODO Fix the below line to adapt better to the self._params
         s1_p0.set_header_protocol('ETHERNET VLAN IP' if self._params['traffic'][
