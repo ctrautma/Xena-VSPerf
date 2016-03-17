@@ -303,12 +303,21 @@ class Xena(object):
                 src_ip=self._params['traffic']['l3']['srcip'],
                 dst_ip=self._params['traffic']['l3']['dstip'],
                 protocol=self._params['traffic']['l3']['proto'])
+            j_file.set_header_layer4(
+                src_port=self._params['traffic']['l4']['scrport'],
+                dst_port=self._params['traffic']['l4']['dstport'])
             if self._params['traffic']['vlan']['enabled']:
                 j_file.set_header_vlan(
                     vlan_id=self._params['traffic']['vlan']['id'],
                     id=self._params['traffic']['vlan']['cfi'],
                     prio=self._params['traffic']['vlan']['priority'])
             j_file.add_header_segments()
+            # set duplex mode
+            if self._params['traffic']['bidir']:
+                j_file.set_topology_mesh()
+            else:
+                j_file.set_topology_blocks()
+
             j_file.write_config()
         except Exception as exc:
             self._logger.exception(
