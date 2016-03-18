@@ -278,17 +278,13 @@ class Xena(object):
         :param multi_stream: This is changing, do not use
         :return: None
         """
-        # enable micro TPLD if byte size is 64
-        if self._params['traffic']['l2']['framesize'] == 64:
-            tpld = True
-        else:
-            tpld = False
         try:
             j_file = XenaJSON('./profiles/baseconfig.x2544')
             j_file.set_test_options(
                 packet_sizes=self._params['traffic']['l2']['framesize'],
                 iterations=trials, loss_rate=loss_rate,
-                duration=self._duration, micro_tpld=tpld)
+                duration=self._duration, micro_tpld=True if self._params[
+                    'traffic']['l2']['framesize'] == 64 else False)
             if testtype == '2544_throughput':
                 j_file.enable_throughput_test()
             elif testtype == '2544_b2b':
@@ -301,7 +297,7 @@ class Xena(object):
                 src_ip=self._params['traffic']['l3']['srcip'],
                 dst_ip=self._params['traffic']['l3']['dstip'],
                 protocol=self._params['traffic']['l3']['proto'])
-            j_file.set_header_layer4_UDP(
+            j_file.set_header_layer4_udp(
                 source_port=self._params['traffic']['l4']['srcport'],
                 destination_port=self._params['traffic']['l4']['dstport'])
             if self._params['traffic']['vlan']['enabled']:
