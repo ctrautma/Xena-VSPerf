@@ -22,7 +22,7 @@ from collections import namedtuple
 CMD_PREFIX = 'gencmd : '
 TRAFFIC_DEFAULTS = {
     'traffic_type' : 'rfc2544',
-    'frame_rate' : 100,
+    'frame_rate' : 75,
     'bidir' : False,
     'multistream' : 0,
     'stream_type' : 'L4',
