@@ -67,6 +67,9 @@ CMD_SET_STREAM_RATE_FRACTION = 'ps_ratefraction'
 CMD_SET_STREAM_TEST_PAYLOAD_ID = 'ps_tpldid'
 CMD_START_TRAFFIC = 'p_traffic on'
 CMD_STOP_TRAFFIC = 'p_traffic off'
+CMD_STREAM_MODIFIER = 'ps_modifier'
+CMD_STREAM_MODIFIER_COUNT = 'ps_modifiercount'
+CMD_STREAM_MODIFIER_RANGE = 'ps_modifierrange'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -543,6 +546,7 @@ class XenaStream(object):
         self._xena_port = xenaPort
         self._stream_id = str(streamID)
         self._manager = self._xena_port.manager
+        self._header_protocol = None
 
     @property
     def xena_port(self):
@@ -557,6 +561,57 @@ class XenaStream(object):
         :return: streamID value as string
         """
         return self._stream_id
+
+    def enable_multistream(self, flows, layer):
+        """
+        Basic implementation of multi stream. Enable multi stream by setting
+        modifiers on the stream
+        :param flows: Numbers of flows or end range
+        :param layer: layer to enable multi stream as str. Acceptable values
+        are L2, L3, or L4
+        :return: True if success False otherwise
+        """
+        if not self._header_protocol:
+            raise RuntimeError(
+                "Please set a protocol header before calling this method.")
+
+        # byte offsets for setting the modifier
+        offsets = {
+            'L2': [0, 6],
+            'L3': [32, 36] if 'VLAN' in self._header_protocol else [28, 32],
+            'L4': [38, 40] if 'VLAN' in self._header_protocol else [34, 36]
+        }
+
+        responses = list()
+        if layer in offsets.keys() and flows > 0:
+            command = make_port_command(
+                CMD_STREAM_MODIFIER_COUNT + ' [{}]'.format(self._stream_id) +
+                ' 2',  self._xena_port)
+            responses.append(self._manager.driver.ask_verify(command))
+            command = make_port_command(
+                CMD_STREAM_MODIFIER + ' [0,0] {} 0xFFFF0000 INC 1'.format(
+                    offsets[layer][0]), self._xena_port)
+            responses.append(self._manager.driver.ask_verify(command))
+            command = make_port_command(
+                CMD_STREAM_MODIFIER_RANGE + ' [0,0] 0 1 {}'.format(flows),
+                self._xena_port)
+            responses.append(self._manager.driver.ask_verify(command))
+            command = make_port_command(
+                CMD_STREAM_MODIFIER + ' [0,1] {} 0xFFFF0000 INC 1'.format(
+                    offsets[layer][1]), self._xena_port)
+            responses.append(self._manager.driver.ask_verify(command))
+            command = make_port_command(
+                CMD_STREAM_MODIFIER_RANGE + ' [0,1] 0 1 {}'.format(flows),
+                self._xena_port)
+            responses.append(self._manager.driver.ask_verify(command))
+            return all(responses)  # return True if they all worked
+        elif flows < 1:
+            _LOGGER.warning('No flows specified in enable multistream')
+            return False
+        else:
+            raise NotImplementedError(
+                "Non-implemented stream layer in method enable multistream ",
+                "layer=", layer)
 
     def get_stream_data(self):
         """
@@ -578,7 +633,11 @@ class XenaStream(object):
         command = make_stream_command(
             CMD_SET_STREAM_HEADER_PROTOCOL,
             protocolheader, self)
-        return self._manager.driver.ask_verify(command)
+        if self._manager.driver.ask_verify(command):
+            self._header_protocol = protocolheader
+            return True
+        else:
+            return False
 
     def set_off(self):
         """Set the stream to off

@@ -354,6 +354,11 @@ class Xena(ITrafficGenerator):
 
         self.xmanager.ports[0].set_port_time_limit(self._duration * 1000000)
 
+        if self._params['traffic']['multistream']:
+            s1_p0.enable_multistream(
+                flows=self._params['traffic']['multistream'],
+                layer=self._params['traffic']['stream_type'])
+
         if not self.xmanager.ports[0].traffic_on():
             self._logger.error(
                 "Failure to start traffic. Check settings and retry.")
