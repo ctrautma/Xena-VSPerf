@@ -138,14 +138,14 @@ class Xena(object):
             results[ResultsConstants.THROUGHPUT_RX_FPS] = int(
                 root[0][1][0][1].get('PortRxPps'))
             results[ResultsConstants.THROUGHPUT_RX_MBPS] = int(
-                root[0][1][0][1].get('PortRxBpsL1')) / 1000
+                root[0][1][0][1].get('PortRxBpsL1')) / 1000000
             results[ResultsConstants.THROUGHPUT_RX_PERCENT] = (
                 100 - int(root[0][1][0].get('TotalLossRatioPcnt'))) * float(
                     root[0][1][0].get('TotalTxRatePcnt'))/100
             results[ResultsConstants.TX_RATE_FPS] = root[0][1][0].get(
                 'TotalTxRateFps')
             results[ResultsConstants.TX_RATE_MBPS] = float(
-                root[0][1][0].get('TotalTxRateBpsL1'))/1000
+                root[0][1][0].get('TotalTxRateBpsL1')) / 1000000
             results[ResultsConstants.TX_RATE_PERCENT] = root[0][1][0].get(
                 'TotalTxRatePcnt')
             results[ResultsConstants.MIN_LATENCY_NS] = root[0][1][0][0].get(
