@@ -33,6 +33,7 @@ from tools.pkt_gen.trafficgen.trafficgenhelper import (
     TRAFFIC_DEFAULTS,
     merge_spec,
     Back2BackResult)
+from tools.pkt_gen.trafficgen.trafficgen import ITrafficGenerator
 
 # python imports
 import binascii
@@ -70,7 +71,7 @@ TRAFFICGEN_MODULE2 = settings.getValue('TRAFFICGEN_XENA_MODULE2')
 # modules that I did not want to include in this implementation. -CT
 
 
-class Xena(object):
+class Xena(ITrafficGenerator):
     """
     Xena Traffic generator wrapper
     """
