@@ -81,8 +81,6 @@ class Xena(ITrafficGenerator):
     def __init__(self, debug=False):
         self.mono_pipe = None
         self.xmanager = None
-        self._port0 = None
-        self._port1 = None
         self._params = {}
         self._xsocket = None
         self._duration = None
@@ -100,22 +98,6 @@ class Xena(ITrafficGenerator):
         respectively.
         """
         return self._traffic_defaults
-
-    def __enter__(self):
-        """Connect to the traffic generator.
-
-        Provide a context manager interface to the traffic generators.
-        This simply calls the :func:`connect` function.
-        """
-        return self.connect()
-
-    def __exit__(self, type_, value, traceback):
-        """Disconnect from the traffic generator.
-
-        Provide a context manager interface to the traffic generators.
-        This simply calls the :func:`disconnect` function.
-        """
-        self.disconnect()
 
     @staticmethod
     def _create_throughput_result(root):
@@ -196,7 +178,7 @@ class Xena(ITrafficGenerator):
             result_dict[ResultsConstants.TX_BYTES] = self.tx_stats.data[
                 self.tx_stats.pt_stream_keys[0]]['bytes']
             result_dict[ResultsConstants.TX_RATE_PERCENT] = line_percentage(
-                self._port0, self.tx_stats, self._duration,
+                self.xmanager.ports[0], self.tx_stats, self._duration,
                 self._params['traffic']['l2']['framesize'])
         else:
             self._logger.error('Transmit stats not available.')
@@ -219,7 +201,7 @@ class Xena(ITrafficGenerator):
                 'pr_tpldstraffic']['0']['bytes']
             result_dict[
                 ResultsConstants.THROUGHPUT_RX_PERCENT] = line_percentage(
-                    self._port1, self.rx_stats, self._duration,
+                    self.xmanager.ports[1], self.rx_stats, self._duration,
                     self._params['traffic']['l2']['framesize'])
         else:
             result_dict[ResultsConstants.RX_FRAMES] = 0
@@ -334,29 +316,29 @@ class Xena(ITrafficGenerator):
             self.xmanager = XenaManager(
                 self._xsocket, TRAFFICGEN_USER, TRAFFICGEN_PASSWORD)
 
-        if not self._port0:
-            self._port0 = self.xmanager.add_module_port(TRAFFICGEN_MODULE1,
-                                                        TRAFFICGEN_PORT1)
-            if not self._port0:
-                self._logger.error("Fail to add port " + str(TRAFFICGEN_PORT1))
-                sys.exit(-1)
-            self._port0.reserve_port()
+        if not len(self.xmanager.ports):
+            self.xmanager.ports[0] = self.xmanager.add_module_port(
+                TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
+            if not self.xmanager.ports[0].reserve_port():
+                self._logger.error(
+                    'Unable to reserve port 0. Please release Xena Port')
+                sys.exit(1)
 
-        if not self._port1:
-            self._port1 = self.xmanager.add_module_port(TRAFFICGEN_MODULE2,
-                                                        TRAFFICGEN_PORT2)
-            if not self._port1:
-                self._logger.error("Fail to add port" + str(TRAFFICGEN_PORT2))
-                sys.exit(-1)
-            self._port1.reserve_port()
+        if len(self.xmanager.ports) < 2:
+            self.xmanager.ports[1] = self.xmanager.add_module_port(
+                TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
+            if not self.xmanager.ports[1].reserve_port():
+                self._logger.error(
+                    'Unable to reserve port 1. Please release Xena Port')
+                sys.exit(1)
 
         # Clear port configuration for a clean start
-        self._port0.reset_port()
-        self._port1.reset_port()
-        self._port0.clear_stats()
-        self._port1.clear_stats()
+        self.xmanager.ports[0].reset_port()
+        self.xmanager.ports[1].reset_port()
+        self.xmanager.ports[0].clear_stats()
+        self.xmanager.ports[1].clear_stats()
 
-        s1_p0 = self._port0.add_stream()
+        s1_p0 = self.xmanager.ports[0].add_stream()
         s1_p0.set_on()
         s1_p0.set_packet_limit(packet_limit)
 
@@ -369,9 +351,9 @@ class Xena(ITrafficGenerator):
         s1_p0.set_packet_payload('incrementing', '0x00')
         s1_p0.set_payload_id(0)
 
-        self._port0.set_port_time_limit(self._duration * 1000000)
+        self.xmanager.ports[0].set_port_time_limit(self._duration * 1000000)
 
-        if not self._port0.traffic_on():
+        if not self.xmanager.ports[0].traffic_on():
             self._logger.error(
                 "Failure to start traffic. Check settings and retry.")
         Time.sleep(self._duration + 1)
@@ -381,11 +363,12 @@ class Xena(ITrafficGenerator):
         Stop traffic through the socket API
         :return: Return results from _create_api_result method
         """
-        self._port0.traffic_off()
+        self.xmanager.ports[0].traffic_off()
+        Time.sleep(2)
 
         # getting results
-        self.tx_stats = self._port0.get_tx_stats()
-        self.rx_stats = self._port1.get_rx_stats()
+        self.tx_stats = self.xmanager.ports[0].get_tx_stats()
+        self.rx_stats = self.xmanager.ports[1].get_rx_stats()
         return self._create_api_result()
 
     def disconnect(self):
@@ -430,7 +413,7 @@ class Xena(ITrafficGenerator):
         self._start_traffic_api(numpkts)
         return self._stop_api_traffic()
 
-    def send_cont_traffic(self, traffic=None, duration=20, multistream=False):
+    def send_cont_traffic(self, traffic=None, duration=20):
         """Send a continuous flow of traffic.r
 
         Send packets at ``framerate``, using ``traffic`` configuration,
