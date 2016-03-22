@@ -19,7 +19,7 @@ This is an abstract class for traffic generators.
 #TODO update Back2Back method description when Result implementation will
 #be ready.
 
-from trafficgenhelper import TRAFFIC_DEFAULTS
+from tools.pkt_gen.trafficgen.trafficgenhelper import TRAFFIC_DEFAULTS
 
 class ITrafficGenerator(object):
     """Model of a traffic generator device.
