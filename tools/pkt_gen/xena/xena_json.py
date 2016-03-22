@@ -17,7 +17,7 @@
 #   Christian Trautman, Red Hat Inc.
 
 """
-Xena XML module
+Xena JSON module
 """
 
 import base64
@@ -53,7 +53,7 @@ class XenaJSON(object):
     def _add_multistream_layer(self, entity, seg_uuid, stop_value, layer):
         """
         Add the multi stream layers to the json file based on the layer
-        :param entity: Entitry to append the segment to in entity list
+        :param entity: Entity to append the segment to in entity list
         :param seg_uuid: The UUID to attach the multistream layer to
         :param stop_value: The number of flows to configure
         :param layer: the layer that the multistream will be attached to
@@ -115,8 +115,8 @@ class XenaJSON(object):
         """
         Build the header segments to write to the JSON file.
         :param flows: Number of flows to configure for multistream if enabled
-        :param multistream_layer: layer to set multistream flows as int or
-        string. Acceptable values are 2, 3 or 4
+        :param multistream_layer: layer to set multistream flows as string.
+        Acceptable values are L2, L3 or L4
         :return: None
         """
         packet = self._create_packet_header()
@@ -127,7 +127,7 @@ class XenaJSON(object):
             layer2 = packet[0][header_pos: len(self.packet_data['layer2'][0])]
             seg = create_segment(
                 "ETHERNET", encode_byte_array(layer2).decode('utf-8'))
-            if multistream_layer == 2:
+            if multistream_layer == 'L2' and flows > 0:
                 self._add_multistream_layer(entity=0, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=2)
             segment1.append(seg)
@@ -135,7 +135,7 @@ class XenaJSON(object):
             seg = create_segment(
                 "ETHERNET", encode_byte_array(layer2).decode('utf-8'))
             segment2.append(seg)
-            if multistream_layer == 2:
+            if multistream_layer == 'L2' and flows > 0:
                 self._add_multistream_layer(entity=1, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=2)
             header_pos = len(layer2)
@@ -153,7 +153,7 @@ class XenaJSON(object):
             seg = create_segment(
                 "IP", encode_byte_array(layer3).decode('utf-8'))
             segment1.append(seg)
-            if multistream_layer == 3:
+            if multistream_layer == 'L3' and flows > 0:
                 self._add_multistream_layer(entity=0, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=3)
             layer3 = packet[1][header_pos: len(
@@ -161,7 +161,7 @@ class XenaJSON(object):
             seg = create_segment(
                 "IP", encode_byte_array(layer3).decode('utf-8'))
             segment2.append(seg)
-            if multistream_layer == 3:
+            if multistream_layer == 'L3' and flows > 0:
                 self._add_multistream_layer(entity=1, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=3)
             header_pos += len(layer3)
@@ -171,7 +171,8 @@ class XenaJSON(object):
             seg = create_segment(
                 "UDP", encode_byte_array(layer4).decode('utf-8'))
             segment1.append(seg)
-            if multistream_layer == 4:
+            if multistream_layer == 'L4' and flows > 0:
+                print("Layer 4")
                 self._add_multistream_layer(entity=0, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=4)
             layer3 = packet[1][header_pos: len(
@@ -179,7 +180,8 @@ class XenaJSON(object):
             seg = create_segment(
                 "UDP", encode_byte_array(layer3).decode('utf-8'))
             segment2.append(seg)
-            if multistream_layer == 4:
+            if multistream_layer == 'L4' and flows > 0:
+                print("Layer 4")
                 self._add_multistream_layer(entity=1, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=4)
             header_pos += len(layer4)
@@ -236,7 +238,7 @@ class XenaJSON(object):
     def set_header_layer2(self, dst_mac='aa:aa:aa:aa:aa:aa',
                           src_mac='bb:bb:bb:bb:bb:bb', **kwargs):
         """
-        Build a scapy Ethernet L2 object
+        Build a scapy Ethernet L2 objects inside instance packet_data structure
         :param dst_mac: destination mac as string. Example "aa:aa:aa:aa:aa:aa"
         :param src_mac: source mac as string. Example "bb:bb:bb:bb:bb:bb"
         :param kwargs: Extra params per scapy usage.
@@ -249,7 +251,7 @@ class XenaJSON(object):
     def set_header_layer3(self, src_ip='192.168.0.2', dst_ip='192.168.0.3',
                           protocol='UDP', **kwargs):
         """
-        Build scapy IPV4 L3 objects for the json file
+        Build scapy IPV4 L3 objects nside instance packet_data structure
         :param src_ip: source IP as string in dot notation format
         :param dst_ip: destination IP as string in dot notation format
         :param protocol: protocol for l4
@@ -262,7 +264,7 @@ class XenaJSON(object):
 
     def set_header_layer4_udp(self, source_port, destination_port, **kwargs):
         """
-        Build scapy UDP L4 objects for the json file
+        Build scapy UDP L4 objects inside instance packet_data structure
         :param source_port: Source port as int
         :param destination_port: Destination port as int
         :param kwargs: Extra params per scapy usage
@@ -274,7 +276,7 @@ class XenaJSON(object):
 
     def set_header_vlan(self, vlan_id=1, **kwargs):
         """
-        Build a Dot1Q scapy object.
+        Build a Dot1Q scapy object inside instance packet_data structure
         :param vlan_id: The VLAN ID
         :param kwargs: Extra params per scapy usage
         :return: None
@@ -394,7 +396,7 @@ def encode_byte_array(byte_arr):
 
 def print_json_report(json_data):
     """
-    Print out info from the json data
+    Print out info from the json data for testing purposes only.
     :param json_data: json loaded data from json.loads
     :return: None
     """
@@ -508,7 +510,7 @@ if __name__ == "__main__":
     JSON.set_header_layer4_udp(source_port=3000, destination_port=3001)
     JSON.set_test_options(packet_sizes=[64], duration=10, iterations=1,
                           loss_rate=0.0, micro_tpld=True)
-    JSON.add_header_segments(flows=4000, multistream_layer=4)
+    JSON.add_header_segments(flows=4000, multistream_layer='L4')
     JSON.set_topology_blocks()
     write_json_file(JSON.json_data, './testthis.x2544')
     JSON = XenaJSON('./testthis.x2544')

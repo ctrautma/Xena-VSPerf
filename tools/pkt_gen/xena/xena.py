@@ -255,8 +255,7 @@ class Xena(ITrafficGenerator):
         packet_hex = '0x' + binascii.hexlify(packet_bytes).decode('utf-8')
         return packet_hex
 
-    def _setup_xml_config(self, trials, loss_rate, testtype=None,
-                          multi_stream=None):
+    def _setup_json_config(self, trials, loss_rate, testtype=None):
         """
         Create a 2bUsed xml file that will be used for xena2544.exe execution.
         :param trials: Number of trials
@@ -292,7 +291,9 @@ class Xena(ITrafficGenerator):
                     vlan_id=self._params['traffic']['vlan']['id'],
                     id=self._params['traffic']['vlan']['cfi'],
                     prio=self._params['traffic']['vlan']['priority'])
-            j_file.add_header_segments()
+            j_file.add_header_segments(
+                flows=self._params['traffic']['multistream'],
+                multistream_layer=self._params['traffic']['stream_type'])
             # set duplex mode
             if self._params['traffic']['bidir']:
                 j_file.set_topology_mesh()
@@ -470,7 +471,7 @@ class Xena(ITrafficGenerator):
         return self._stop_api_traffic()
 
     def send_rfc2544_throughput(self, traffic=None, trials=3, duration=20,
-                                lossrate=0.0, multistream=False):
+                                lossrate=0.0):
         """Send traffic per RFC2544 throughput test specifications.
 
         Send packets at a variable rate, using ``traffic``
@@ -503,7 +504,7 @@ class Xena(ITrafficGenerator):
             self._params['traffic'] = merge_spec(self._params['traffic'],
                                                  traffic)
 
-        self._setup_xml_config(trials, lossrate, '2544_throughput', multistream)
+        self._setup_json_config(trials, lossrate, '2544_throughput')
 
         args = ["mono", "./tools/pkt_gen/xena/Xena2544.exe", "-c",
                 "./tools/pkt_gen/xena/profiles/2bUsed.x2544", "-e", "-r",
@@ -532,7 +533,7 @@ class Xena(ITrafficGenerator):
             self._params['traffic'] = merge_spec(self._params['traffic'],
                                                  traffic)
 
-        self._setup_xml_config(trials, lossrate, '2544_throughput')
+        self._setup_json_config(trials, lossrate, '2544_throughput')
 
         args = ["mono", "./tools/pkt_gen/xena/Xena2544.exe", "-c",
                 "./tools/pkt_gen/xena/profiles/2bUsed.x2544", "-e", "-r",
@@ -577,7 +578,7 @@ class Xena(ITrafficGenerator):
             self._params['traffic'] = merge_spec(self._params['traffic'],
                                                  traffic)
 
-        self._setup_xml_config(trials, lossrate, '2544_b2b')
+        self._setup_json_config(trials, lossrate, '2544_b2b')
 
         args = ["mono", "./tools/pkt_gen/xena/Xena2544.exe", "-c",
                 "./tools/pkt_gen/xena/profiles/2bUsed.x2544", "-e", "-r",
@@ -604,7 +605,7 @@ class Xena(ITrafficGenerator):
             self._params['traffic'] = merge_spec(self._params['traffic'],
                                                  traffic)
 
-        self._setup_xml_config(trials, lossrate, '2544_b2b')
+        self._setup_json_config(trials, lossrate, '2544_b2b')
 
         args = ["mono", "./tools/pkt_gen/xena/Xena2544.exe", "-c",
                 "./tools/pkt_gen/xena/profiles/2bUsed.x2544", "-e", "-r",
