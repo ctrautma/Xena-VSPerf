@@ -244,13 +244,15 @@ class Xena(ITrafficGenerator):
         layer3 = inet.IP(src=self._params['traffic']['l3']['srcip'],
                          dst=self._params['traffic']['l3']['dstip'],
                          proto=self._params['traffic']['l3']['proto'])
+        layer4 = inet.UDP(sport=self._params['traffic']['l4']['srcport'],
+                          dport=self._params['traffic']['l4']['dstport'])
         if self._params['traffic']['vlan']['enabled']:
             vlan = inet.Dot1Q(vlan=self._params['traffic']['vlan']['id'],
                               prio=self._params['traffic']['vlan']['priority'],
                               id=self._params['traffic']['vlan']['cfi'])
         else:
             vlan = None
-        packet = layer2/vlan/layer3 if vlan else layer2/layer3
+        packet = layer2/vlan/layer3/layer4 if vlan else layer2/layer3/layer4
         packet_bytes = bytes(packet)
         packet_hex = '0x' + binascii.hexlify(packet_bytes).decode('utf-8')
         return packet_hex
@@ -345,8 +347,9 @@ class Xena(ITrafficGenerator):
 
         s1_p0.set_rate_fraction(10000 * self._params['traffic']['frame_rate'])
         s1_p0.set_packet_header(self._build_packet_header())
-        s1_p0.set_header_protocol('ETHERNET VLAN IP' if self._params['traffic'][
-            'vlan']['enabled'] else 'ETHERNET IP')
+        s1_p0.set_header_protocol(
+            'ETHERNET VLAN IP UDP' if self._params['traffic']['vlan'][
+                'enabled'] else 'ETHERNET IP UDP')
         s1_p0.set_packet_length(
             'fixed', self._params['traffic']['l2']['framesize'], 16383)
         s1_p0.set_packet_payload('incrementing', '0x00')

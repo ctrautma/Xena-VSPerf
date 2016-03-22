@@ -606,7 +606,8 @@ class XenaStream(object):
             responses.append(self._manager.driver.ask_verify(command))
             return all(responses)  # return True if they all worked
         elif flows < 1:
-            _LOGGER.warning('No flows specified in enable multistream')
+            _LOGGER.warning(
+                'No flows specified in enable multistream. Bypassing...')
             return False
         else:
             raise NotImplementedError(
