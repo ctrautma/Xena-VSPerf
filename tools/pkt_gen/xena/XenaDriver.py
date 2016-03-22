@@ -589,20 +589,20 @@ class XenaStream(object):
                 ' 2',  self._xena_port)
             responses.append(self._manager.driver.ask_verify(command))
             command = make_port_command(
-                CMD_STREAM_MODIFIER + ' [0,0] {} 0xFFFF0000 INC 1'.format(
-                    offsets[layer][0]), self._xena_port)
+                CMD_STREAM_MODIFIER + ' [{},0] {} 0xFFFF0000 INC 1'.format(
+                    self._stream_id, offsets[layer][0]), self._xena_port)
             responses.append(self._manager.driver.ask_verify(command))
             command = make_port_command(
-                CMD_STREAM_MODIFIER_RANGE + ' [0,0] 0 1 {}'.format(flows),
-                self._xena_port)
+                CMD_STREAM_MODIFIER_RANGE + ' [{},0] 0 1 {}'.format(
+                    self._stream_id, flows), self._xena_port)
             responses.append(self._manager.driver.ask_verify(command))
             command = make_port_command(
-                CMD_STREAM_MODIFIER + ' [0,1] {} 0xFFFF0000 INC 1'.format(
-                    offsets[layer][1]), self._xena_port)
+                CMD_STREAM_MODIFIER + ' [{},1] {} 0xFFFF0000 INC 1'.format(
+                    self._stream_id, offsets[layer][1]), self._xena_port)
             responses.append(self._manager.driver.ask_verify(command))
             command = make_port_command(
-                CMD_STREAM_MODIFIER_RANGE + ' [0,1] 0 1 {}'.format(flows),
-                self._xena_port)
+                CMD_STREAM_MODIFIER_RANGE + ' [{},1] 0 1 {}'.format(
+                    self._stream_id, flows), self._xena_port)
             responses.append(self._manager.driver.ask_verify(command))
             return all(responses)  # return True if they all worked
         elif flows < 1:
