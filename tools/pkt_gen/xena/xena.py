@@ -165,7 +165,7 @@ class Xena(object):
             results.rx_fps = int(
                 root[0][1][0][1].get('PortRxPps'))
             results.rx_mbps = int(
-                root[0][1][0][1].get('PortRxBpsL1')) / 1000
+                root[0][1][0][1].get('PortRxBpsL1')) / 1000000
             results.rx_percent = (
                 100 - int(root[0][1][0].get('TotalLossRatioPcnt'))) * float(
                     root[0][1][0].get('TotalTxRatePcnt'))/100
@@ -191,7 +191,7 @@ class Xena(object):
             result_dict[ResultsConstants.TX_RATE_FPS] = self.tx_stats.data[
                 self.tx_stats.pt_stream_keys[0]]['pps']
             result_dict[ResultsConstants.TX_RATE_MBPS] = self.tx_stats.data[
-                self.tx_stats.pt_stream_keys[0]]['bps'] / 1000
+                self.tx_stats.pt_stream_keys[0]]['bps'] / 1000000
             result_dict[ResultsConstants.TX_BYTES] = self.tx_stats.data[
                 self.tx_stats.pt_stream_keys[0]]['bytes']
             result_dict[ResultsConstants.TX_RATE_PERCENT] = line_percentage(
@@ -213,7 +213,7 @@ class Xena(object):
                     'pr_tpldstraffic']['0']['pps']
             result_dict[
                 ResultsConstants.THROUGHPUT_RX_MBPS] = self.rx_stats.data[
-                    'pr_tpldstraffic']['0']['bps'] / 1000
+                    'pr_tpldstraffic']['0']['bps'] / 1000000
             result_dict[ResultsConstants.RX_BYTES] = self.rx_stats.data[
                 'pr_tpldstraffic']['0']['bytes']
             result_dict[
