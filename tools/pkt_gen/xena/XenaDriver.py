@@ -958,6 +958,27 @@ class XenaTXStats(object):
         return mydict
 
 
+def average_stats(stat1, stat2):
+    """
+    Recursive function to take the average of two sets of statistics. This is
+    used when bi directional traffic is done and statistics need to be
+    calculated based on two sets of statistics.
+    :param stat1: One set of dictionary stats from RX or TX stats
+    :param stat2: Second set of dictionary stats from RX or TX stats
+    :return: stats for data entry in RX or TX Stats instance
+    """
+    newstat = dict()
+    for (keys) in stat1.keys():
+        if type(stat1[keys]) == dict:
+            newstat[keys] = average_stats(stat1[keys], stat2[keys])
+        else:
+            if type(stat1[keys]) != int:
+                # its some value we don't need to average...
+                return stat1[keys]
+            newstat[keys] = (stat1[keys] + stat2[keys]) / 2
+    return newstat
+
+
 def line_percentage(port, stats, time_active, packet_size):
     """
     Calculate the line percentage rate from the duration, port object and stat

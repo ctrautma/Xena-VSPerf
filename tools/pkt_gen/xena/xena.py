@@ -47,9 +47,11 @@ from collections import OrderedDict
 
 # XenaDriver
 from tools.pkt_gen.xena.XenaDriver import (
+    average_stats,
+    line_percentage,
     XenaSocketDriver,
     XenaManager,
-    line_percentage)
+    )
 from tools.pkt_gen.xena.xena_json import XenaJSON
 
 # scapy imports
@@ -87,6 +89,7 @@ class Xena(ITrafficGenerator):
         self.debug = debug
         self.tx_stats = None
         self.rx_stats = None
+        self._full_duplex = True
 
     @property
     def traffic_defaults(self):
@@ -233,16 +236,25 @@ class Xena(ITrafficGenerator):
 
         return result_dict
 
-    def _build_packet_header(self):
+    def _build_packet_header(self, reverse=False):
         """
         Build a packet header based on traffic profile using scapy external
         libraries.
+        :param reverse: Swap source and destination info when building header
         :return: packet header in hex
         """
-        layer2 = inet.Ether(src=self._params['traffic']['l2']['srcmac'],
-                            dst=self._params['traffic']['l2']['dstmac'])
-        layer3 = inet.IP(src=self._params['traffic']['l3']['srcip'],
-                         dst=self._params['traffic']['l3']['dstip'],
+        srcmac = self._params['traffic']['l2'][
+            'srcmac'] if not reverse else self._params['traffic']['l2'][
+            'dstmac']
+        dstmac = self._params['traffic']['l2'][
+            'dstmac'] if not reverse else self._params['traffic']['l2'][
+            'srcmac']
+        srcip = self._params['traffic']['l3'][
+            'srcip'] if not reverse else self._params['traffic']['l3']['dstip']
+        dstip = self._params['traffic']['l3'][
+            'dstip'] if not reverse else self._params['traffic']['l3']['srcip']
+        layer2 = inet.Ether(src=srcmac, dst=dstmac)
+        layer3 = inet.IP(src=srcip, dst=dstip,
                          proto=self._params['traffic']['l3']['proto'])
         layer4 = inet.UDP(sport=self._params['traffic']['l4']['srcport'],
                           dport=self._params['traffic']['l4']['dstport'])
@@ -362,9 +374,36 @@ class Xena(ITrafficGenerator):
                 flows=self._params['traffic']['multistream'],
                 layer=self._params['traffic']['stream_type'])
 
+        if self._full_duplex:
+            s1_p1 = self.xmanager.ports[1].add_stream()
+            s1_p1.set_on()
+            s1_p1.set_packet_limit(packet_limit)
+
+            s1_p1.set_rate_fraction(10000 * self._params['traffic'][
+                'frame_rate'])
+            s1_p1.set_packet_header(self._build_packet_header(reverse=True))
+            s1_p1.set_header_protocol(
+                'ETHERNET VLAN IP UDP' if self._params['traffic']['vlan'][
+                    'enabled'] else 'ETHERNET IP UDP')
+            s1_p1.set_packet_length(
+                'fixed', self._params['traffic']['l2']['framesize'], 16383)
+            s1_p1.set_packet_payload('incrementing', '0x00')
+            s1_p1.set_payload_id(0)
+
+            self.xmanager.ports[1].set_port_time_limit(self._duration * 1000000)
+
+            if self._params['traffic']['multistream']:
+                s1_p1.enable_multistream(
+                    flows=self._params['traffic']['multistream'],
+                    layer=self._params['traffic']['stream_type'])
+
         if not self.xmanager.ports[0].traffic_on():
             self._logger.error(
-                "Failure to start traffic. Check settings and retry.")
+                "Failure to start port 0. Check settings and retry.")
+        if self._full_duplex:
+            if not self.xmanager.ports[1].traffic_on():
+                self._logger.error(
+                    "Failure to start port 1. Check settings and retry.")
         Time.sleep(self._duration + 1)
 
     def _stop_api_traffic(self):
@@ -373,11 +412,25 @@ class Xena(ITrafficGenerator):
         :return: Return results from _create_api_result method
         """
         self.xmanager.ports[0].traffic_off()
+        if self._full_duplex:
+            self.xmanager.ports[1].traffic_off()
         Time.sleep(2)
 
         # getting results
-        self.tx_stats = self.xmanager.ports[0].get_tx_stats()
-        self.rx_stats = self.xmanager.ports[1].get_rx_stats()
+        if self._full_duplex:
+            # need to average out both ports and assign that data
+            self.tx_stats = self.xmanager.ports[0].get_tx_stats()
+            self.tx_stats.data = average_stats(
+                self.tx_stats.data,
+                self.xmanager.ports[1].get_tx_stats().data)
+            self.rx_stats = self.xmanager.ports[1].get_rx_stats()
+            self.rx_stats.data = average_stats(
+                self.rx_stats.data,
+                self.xmanager.ports[0].get_rx_stats().data)
+        else:
+            # no need to average, just grab the appropriate port stats
+            self.tx_stats = self.xmanager.ports[0].get_tx_stats()
+            self.rx_stats = self.xmanager.ports[1].get_rx_stats()
         return self._create_api_result()
 
     def disconnect(self):
