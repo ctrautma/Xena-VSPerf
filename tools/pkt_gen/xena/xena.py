@@ -89,7 +89,6 @@ class Xena(ITrafficGenerator):
         self.debug = debug
         self.tx_stats = None
         self.rx_stats = None
-        self._full_duplex = True
 
     @property
     def traffic_defaults(self):
@@ -374,7 +373,7 @@ class Xena(ITrafficGenerator):
                 flows=self._params['traffic']['multistream'],
                 layer=self._params['traffic']['stream_type'])
 
-        if self._full_duplex:
+        if self._params['traffic']['bidir']:
             s1_p1 = self.xmanager.ports[1].add_stream()
             s1_p1.set_on()
             s1_p1.set_packet_limit(packet_limit)
@@ -400,7 +399,7 @@ class Xena(ITrafficGenerator):
         if not self.xmanager.ports[0].traffic_on():
             self._logger.error(
                 "Failure to start port 0. Check settings and retry.")
-        if self._full_duplex:
+        if self._params['traffic']['bidir']:
             if not self.xmanager.ports[1].traffic_on():
                 self._logger.error(
                     "Failure to start port 1. Check settings and retry.")
@@ -412,12 +411,12 @@ class Xena(ITrafficGenerator):
         :return: Return results from _create_api_result method
         """
         self.xmanager.ports[0].traffic_off()
-        if self._full_duplex:
+        if self._params['traffic']['bidir']:
             self.xmanager.ports[1].traffic_off()
         Time.sleep(2)
 
         # getting results
-        if self._full_duplex:
+        if self._params['traffic']['bidir']:
             # need to average out both ports and assign that data
             self.tx_stats = self.xmanager.ports[0].get_tx_stats()
             self.tx_stats.data = average_stats(
