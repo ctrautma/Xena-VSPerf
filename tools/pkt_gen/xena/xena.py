@@ -55,21 +55,7 @@ from tools.pkt_gen.xena.XenaDriver import (
 from tools.pkt_gen.xena.xena_json import XenaJSON
 
 # scapy imports
-# pip install scapy to install on python 2.x
-# pip install scapy-python3 for python 3.x
 import scapy.layers.inet as inet
-
-TRAFFICGEN_IP = settings.getValue('TRAFFICGEN_XENA_IP')
-TRAFFICGEN_PORT1 = settings.getValue('TRAFFICGEN_XENA_PORT1')
-TRAFFICGEN_PORT2 = settings.getValue('TRAFFICGEN_XENA_PORT2')
-TRAFFICGEN_USER = settings.getValue('TRAFFICGEN_XENA_USER')
-TRAFFICGEN_PASSWORD = settings.getValue('TRAFFICGEN_XENA_PASSWORD')
-TRAFFICGEN_MODULE1 = settings.getValue('TRAFFICGEN_XENA_MODULE1')
-TRAFFICGEN_MODULE2 = settings.getValue('TRAFFICGEN_XENA_MODULE2')
-
-# This needs to be changed to inherit the trafficgen.ITrafficGenerator abstract
-# class. I have left it out currently because it calls into specific VSPerf
-# modules that I did not want to include in this implementation. -CT
 
 
 class Xena(ITrafficGenerator):
@@ -132,12 +118,24 @@ class Xena(ITrafficGenerator):
                 root[0][1][0].get('TotalTxRateBpsL1')) / 1000000
             results[ResultsConstants.TX_RATE_PERCENT] = root[0][1][0].get(
                 'TotalTxRatePcnt')
-            results[ResultsConstants.MIN_LATENCY_NS] = root[0][1][0][0].get(
-                'MinLatency') * 1000
-            results[ResultsConstants.MAX_LATENCY_NS] = root[0][1][0][0].get(
-                'MaxLatency') * 1000
-            results[ResultsConstants.AVG_LATENCY_NS] = root[0][1][0][0].get(
-                'AvgLatency') * 1000
+            try:
+                results[ResultsConstants.MIN_LATENCY_NS] = int(
+                    root[0][1][0][0].get('MinLatency')) * 1000
+            except ValueError:
+                results[ResultsConstants.MIN_LATENCY_NS] = root[0][1][0][0].get(
+                    'MinLatency')
+            try:
+                results[ResultsConstants.MAX_LATENCY_NS] = int(
+                    root[0][1][0][0].get('MaxLatency')) * 1000
+            except ValueError:
+                results[ResultsConstants.MAX_LATENCY_NS] = root[0][1][0][0].get(
+                    'MaxLatency')
+            try:
+                results[ResultsConstants.AVG_LATENCY_NS] = int(
+                    root[0][1][0][0].get('AvgLatency')) * 1000
+            except ValueError:
+                results[ResultsConstants.AVG_LATENCY_NS] = root[0][1][0][0].get(
+                    'AvgLatency')
         elif back2back_test:
             results = Back2BackResult
 
@@ -325,13 +323,16 @@ class Xena(ITrafficGenerator):
         :return: None
         """
         if not self.xmanager:
-            self._xsocket = XenaSocketDriver(TRAFFICGEN_IP)
+            self._xsocket = XenaSocketDriver(
+                settings.getValue('TRAFFICGEN_XENA_IP'))
             self.xmanager = XenaManager(
-                self._xsocket, TRAFFICGEN_USER, TRAFFICGEN_PASSWORD)
+                self._xsocket, settings.getValue('TRAFFICGEN_XENA_USER'),
+                settings.getValue('TRAFFICGEN_XENA_PASSWORD'))
 
         if not len(self.xmanager.ports):
             self.xmanager.ports[0] = self.xmanager.add_module_port(
-                TRAFFICGEN_MODULE1, TRAFFICGEN_PORT1)
+                settings.getValue('TRAFFICGEN_XENA_MODULE1'),
+                settings.getValue('TRAFFICGEN_XENA_PORT1'))
             if not self.xmanager.ports[0].reserve_port():
                 self._logger.error(
                     'Unable to reserve port 0. Please release Xena Port')
@@ -339,7 +340,8 @@ class Xena(ITrafficGenerator):
 
         if len(self.xmanager.ports) < 2:
             self.xmanager.ports[1] = self.xmanager.add_module_port(
-                TRAFFICGEN_MODULE2, TRAFFICGEN_PORT2)
+                settings.getValue('TRAFFICGEN_XENA_MODULE2'),
+                settings.getValue('TRAFFICGEN_XENA_PORT2'))
             if not self.xmanager.ports[1].reserve_port():
                 self._logger.error(
                     'Unable to reserve port 1. Please release Xena Port')
@@ -412,7 +414,7 @@ class Xena(ITrafficGenerator):
         self.xmanager.ports[0].traffic_off()
         if self._params['traffic']['bidir']:
             self.xmanager.ports[1].traffic_off()
-        Time.sleep(2)
+        Time.sleep(5)
 
         # getting results
         if self._params['traffic']['bidir']:
@@ -570,7 +572,8 @@ class Xena(ITrafficGenerator):
 
         args = ["mono", "./tools/pkt_gen/xena/Xena2544.exe", "-c",
                 "./tools/pkt_gen/xena/profiles/2bUsed.x2544", "-e", "-r",
-                "./tools/pkt_gen/xena", "-u", TRAFFICGEN_USER]
+                "./tools/pkt_gen/xena", "-u",
+                settings.getValue('TRAFFICGEN_XENA_USER')]
         self.mono_pipe = subprocess.Popen(
             args, stdout=sys.stdout if self.debug else subprocess.PIPE)
         self.mono_pipe.communicate()
@@ -599,7 +602,8 @@ class Xena(ITrafficGenerator):
 
         args = ["mono", "./tools/pkt_gen/xena/Xena2544.exe", "-c",
                 "./tools/pkt_gen/xena/profiles/2bUsed.x2544", "-e", "-r",
-                "./tools/pkt_gen/xena", "-u", TRAFFICGEN_USER]
+                "./tools/pkt_gen/xena", "-u",
+                settings.getValue('TRAFFICGEN_XENA_USER')]
         self.mono_pipe = subprocess.Popen(
             args, stdout=sys.stdout if self.debug else subprocess.PIPE)
 
@@ -644,7 +648,8 @@ class Xena(ITrafficGenerator):
 
         args = ["mono", "./tools/pkt_gen/xena/Xena2544.exe", "-c",
                 "./tools/pkt_gen/xena/profiles/2bUsed.x2544", "-e", "-r",
-                "./tools/pkt_gen/xena", "-u", TRAFFICGEN_USER]
+                "./tools/pkt_gen/xena", "-u",
+                settings.getValue('TRAFFICGEN_XENA_USER')]
         self.mono_pipe = subprocess.Popen(
             args, stdout=sys.stdout if self.debug else subprocess.PIPE)
         self.mono_pipe.communicate()
@@ -671,7 +676,8 @@ class Xena(ITrafficGenerator):
 
         args = ["mono", "./tools/pkt_gen/xena/Xena2544.exe", "-c",
                 "./tools/pkt_gen/xena/profiles/2bUsed.x2544", "-e", "-r",
-                "./tools/pkt_gen/xena", "-u", TRAFFICGEN_USER]
+                "./tools/pkt_gen/xena", "-u",
+                settings.getValue('TRAFFICGEN_XENA_USER')]
         self.mono_pipe = subprocess.Popen(
             args, stdout=sys.stdout if self.debug else subprocess.PIPE)
 
