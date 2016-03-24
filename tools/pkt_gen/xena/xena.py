@@ -59,7 +59,6 @@ from tools.pkt_gen.xena.xena_json import XenaJSON
 # pip install scapy-python3 for python 3.x
 import scapy.layers.inet as inet
 
-settings.load_from_dir('conf')
 TRAFFICGEN_IP = settings.getValue('TRAFFICGEN_XENA_IP')
 TRAFFICGEN_PORT1 = settings.getValue('TRAFFICGEN_XENA_PORT1')
 TRAFFICGEN_PORT2 = settings.getValue('TRAFFICGEN_XENA_PORT2')
@@ -134,11 +133,11 @@ class Xena(ITrafficGenerator):
             results[ResultsConstants.TX_RATE_PERCENT] = root[0][1][0].get(
                 'TotalTxRatePcnt')
             results[ResultsConstants.MIN_LATENCY_NS] = root[0][1][0][0].get(
-                'MinLatency')
+                'MinLatency') * 1000
             results[ResultsConstants.MAX_LATENCY_NS] = root[0][1][0][0].get(
-                'MaxLatency')
+                'MaxLatency') * 1000
             results[ResultsConstants.AVG_LATENCY_NS] = root[0][1][0][0].get(
-                'AvgLatency')
+                'AvgLatency') * 1000
         elif back2back_test:
             results = Back2BackResult
 
@@ -431,6 +430,9 @@ class Xena(ITrafficGenerator):
             self.tx_stats = self.xmanager.ports[0].get_tx_stats()
             self.rx_stats = self.xmanager.ports[1].get_rx_stats()
         return self._create_api_result()
+
+    def connect(self):
+        pass
 
     def disconnect(self):
         """Disconnect from the traffic generator.
