@@ -310,9 +310,7 @@ class XenaManager(object):
         for module_port in self.ports:
             module_port.release_port()
         self.ports = []
-        # self.keep_alive_thread.stop()
         self.driver.ask_verify(CMD_LOGOFF)
-        # del self.keep_alive_thread
 
     def add_module_port(self, module, port):
         """Factory for Xena Ports
