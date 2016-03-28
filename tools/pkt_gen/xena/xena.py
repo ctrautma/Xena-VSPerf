@@ -118,19 +118,19 @@ class Xena(ITrafficGenerator):
             results[ResultsConstants.TX_RATE_PERCENT] = root[0][1][0].get(
                 'TotalTxRatePcnt')
             try:
-                results[ResultsConstants.MIN_LATENCY_NS] = int(
+                results[ResultsConstants.MIN_LATENCY_NS] = float(
                     root[0][1][0][0].get('MinLatency')) * 1000
             except ValueError:
                 results[ResultsConstants.MIN_LATENCY_NS] = root[0][1][0][0].get(
                     'MinLatency')
             try:
-                results[ResultsConstants.MAX_LATENCY_NS] = int(
+                results[ResultsConstants.MAX_LATENCY_NS] = float(
                     root[0][1][0][0].get('MaxLatency')) * 1000
             except ValueError:
                 results[ResultsConstants.MAX_LATENCY_NS] = root[0][1][0][0].get(
                     'MaxLatency')
             try:
-                results[ResultsConstants.AVG_LATENCY_NS] = int(
+                results[ResultsConstants.AVG_LATENCY_NS] = float(
                     root[0][1][0][0].get('AvgLatency')) * 1000
             except ValueError:
                 results[ResultsConstants.AVG_LATENCY_NS] = root[0][1][0][0].get(
@@ -430,7 +430,6 @@ class Xena(ITrafficGenerator):
         if self._params['traffic']['bidir']:
             self.xmanager.ports[1].traffic_off()
         Time.sleep(5)
-
 
         stat = self._create_api_result()
         for port in self.xmanager.ports:
