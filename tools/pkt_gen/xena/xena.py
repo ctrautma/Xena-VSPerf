@@ -24,7 +24,6 @@ Xena Traffic Generator Model
 
 # TODO CT List of things that need to be completed
 # 1. Need back to back implementation
-# 2. Need to determine what multistream is
 
 # VSPerf imports
 from conf import settings
@@ -404,7 +403,23 @@ class Xena(ITrafficGenerator):
             if not self.xmanager.ports[1].traffic_on():
                 self._logger.error(
                     "Failure to start port 1. Check settings and retry.")
-        Time.sleep(self._duration + 1)
+        Time.sleep(self._duration)
+        # getting results
+        if self._params['traffic']['bidir']:
+            # need to average out both ports and assign that data
+            self.rx_stats = self.xmanager.ports[1].get_rx_stats()
+            self.tx_stats = self.xmanager.ports[0].get_tx_stats()
+            self.tx_stats.data = average_stats(
+                self.tx_stats.data,
+                self.xmanager.ports[1].get_tx_stats().data)
+            self.rx_stats.data = average_stats(
+                self.rx_stats.data,
+                self.xmanager.ports[0].get_rx_stats().data)
+        else:
+            # no need to average, just grab the appropriate port stats
+            self.tx_stats = self.xmanager.ports[0].get_tx_stats()
+            self.rx_stats = self.xmanager.ports[1].get_rx_stats()
+        Time.sleep(1)
 
     def _stop_api_traffic(self):
         """
@@ -416,22 +431,11 @@ class Xena(ITrafficGenerator):
             self.xmanager.ports[1].traffic_off()
         Time.sleep(5)
 
-        # getting results
-        if self._params['traffic']['bidir']:
-            # need to average out both ports and assign that data
-            self.tx_stats = self.xmanager.ports[0].get_tx_stats()
-            self.tx_stats.data = average_stats(
-                self.tx_stats.data,
-                self.xmanager.ports[1].get_tx_stats().data)
-            self.rx_stats = self.xmanager.ports[1].get_rx_stats()
-            self.rx_stats.data = average_stats(
-                self.rx_stats.data,
-                self.xmanager.ports[0].get_rx_stats().data)
-        else:
-            # no need to average, just grab the appropriate port stats
-            self.tx_stats = self.xmanager.ports[0].get_tx_stats()
-            self.rx_stats = self.xmanager.ports[1].get_rx_stats()
-        return self._create_api_result()
+
+        stat = self._create_api_result()
+        for port in self.xmanager.ports:
+            port.release_port()
+        return stat
 
     def connect(self):
         pass

@@ -62,39 +62,41 @@ class TestProps(object):
 
 if __name__ == "__main__":
     print("Running Xena VSPerf script UnitTest")
-    XENA_OBJ = Xena(debug=True)
-
-    def toggle_debug():
-        """
-        Toggle debug
-        :return: None
-        """
-        XENA_OBJ.debug = False if XENA_OBJ.debug else True
-
-    PROPS = TestProps()
-
-    TESTMETHODS = {
-        1: [XENA_OBJ.send_rfc2544_throughput],
-        2: [XENA_OBJ.start_rfc2544_throughput,
-            XENA_OBJ.wait_rfc2544_throughput],
-        3: [XENA_OBJ.send_burst_traffic],
-        4: [XENA_OBJ.send_cont_traffic],
-        5: [XENA_OBJ.start_cont_traffic, XENA_OBJ.stop_cont_traffic],
-        6: [XENA_OBJ.send_rfc2544_back2back],
-        7: [XENA_OBJ.start_rfc2544_back2back, XENA_OBJ.wait_rfc2544_back2back],
-        8: [PROPS.decrease_framesize],
-        9: [PROPS.increase_framesize],
-        10: [PROPS.set_duration],
-        11: [PROPS.set_trials],
-        12: [toggle_debug],
-        13: [sys.exit],
-    }
 
     def go_menu():
         """
         Run the Unittest method menu
         :return: None
         """
+        XENA_OBJ = Xena(debug=True)
+        from conf import settings
+        settings.load_from_dir('./conf')
+
+        def toggle_debug():
+            """
+            Toggle debug
+            :return: None
+            """
+            XENA_OBJ.debug = False if XENA_OBJ.debug else True
+
+        PROPS = TestProps()
+
+        TESTMETHODS = {
+            1: [XENA_OBJ.send_rfc2544_throughput],
+            2: [XENA_OBJ.start_rfc2544_throughput,
+                XENA_OBJ.wait_rfc2544_throughput],
+            3: [XENA_OBJ.send_burst_traffic],
+            4: [XENA_OBJ.send_cont_traffic],
+            5: [XENA_OBJ.start_cont_traffic, XENA_OBJ.stop_cont_traffic],
+            6: [XENA_OBJ.send_rfc2544_back2back],
+            7: [XENA_OBJ.start_rfc2544_back2back, XENA_OBJ.wait_rfc2544_back2back],
+            8: [PROPS.decrease_framesize],
+            9: [PROPS.increase_framesize],
+            10: [PROPS.set_duration],
+            11: [PROPS.set_trials],
+            12: [toggle_debug],
+            13: [sys.exit],
+        }
         print("Packet size: {} | duration: {}".format(PROPS.framesize,
                                                       PROPS.duration))
         print("Trials for 2544 tests: {}".format(PROPS.trials))
