@@ -432,12 +432,10 @@ class Xena(ITrafficGenerator):
         Time.sleep(5)
 
         stat = self._create_api_result()
-        for port in self.xmanager.ports:
-            port.release_port()
         return stat
 
     def connect(self):
-        pass
+        return self
 
     def disconnect(self):
         """Disconnect from the traffic generator.
@@ -449,6 +447,10 @@ class Xena(ITrafficGenerator):
 
         :returns: None
         """
+        if self.xmanager:
+            self.xmanager.keep_alive_thread.stop()
+            self.xmanager.disconnect()
+
         if self._xsocket:
             self._xsocket.disconnect()
 

@@ -304,8 +304,8 @@ class XenaManager(object):
         self.keep_alive_thread = KeepAliveThread(self.driver)
         self.keep_alive_thread.start()
 
-    def __del__(self):
-        """ De-constructor
+    def disconnect(self):
+        """ Release ports and disconnect from chassis.
         """
         for module_port in self.ports:
             module_port.release_port()
