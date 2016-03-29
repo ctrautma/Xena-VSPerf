@@ -120,8 +120,11 @@ class SimpleSocket(object):
         :return: byte utf encoded return value from socket
         """
         cmd += '\n'
-        self.sock.send(cmd.encode('utf-8'))
-        return self.sock.recv(1024)
+        try:
+            self.sock.send(cmd.encode('utf-8'))
+            return self.sock.recv(1024)
+        except OSError:
+            return ''
 
     def read_reply(self):
         """ Get the response from the socket
@@ -291,6 +294,7 @@ class XenaManager(object):
         """
         self.driver = socketDriver
         self.ports = list()
+        self.keep_alive_thread = KeepAliveThread(self.driver)
 
         if self.logon(password):
             _LOGGER.info('Connected to Xena at {}'.format(self.driver.hostname))
@@ -301,9 +305,6 @@ class XenaManager(object):
 
         self.set_owner(user)
 
-        self.keep_alive_thread = KeepAliveThread(self.driver)
-        self.keep_alive_thread.start()
-
     def disconnect(self):
         """ Release ports and disconnect from chassis.
         """
@@ -311,6 +312,7 @@ class XenaManager(object):
             module_port.release_port()
         self.ports = []
         self.driver.ask_verify(CMD_LOGOFF)
+        self.keep_alive_thread.stop()
 
     def add_module_port(self, module, port):
         """Factory for Xena Ports
@@ -343,6 +345,7 @@ class XenaManager(object):
         :param password: string of password
         :return: Boolean True is response OK, False if error.
         """
+        self.keep_alive_thread.start()
         return self.driver.ask_verify(make_manager_command(CMD_LOGIN, password))
 
     def set_owner(self, username):

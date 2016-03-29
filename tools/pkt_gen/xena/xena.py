@@ -448,7 +448,6 @@ class Xena(ITrafficGenerator):
         :returns: None
         """
         if self.xmanager:
-            self.xmanager.keep_alive_thread.stop()
             self.xmanager.disconnect()
 
         if self._xsocket:
