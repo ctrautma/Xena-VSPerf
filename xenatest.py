@@ -69,6 +69,7 @@ if __name__ == "__main__":
         Run the Unittest method menu
         :return: None
         """
+        import threading
         from conf import settings
         settings.load_from_dir('./conf')
         with Xena(debug=True) as XENA_OBJ:
@@ -101,6 +102,7 @@ if __name__ == "__main__":
                                                           PROPS.duration))
             print("Trials for 2544 tests: {}".format(PROPS.trials))
             print("DEBUG is {}".format('ON' if XENA_OBJ.debug else 'OFF'))
+            print("Thread count: {}".format(threading.active_count()))
             print("What method to test?")
             for k in sorted(TESTMETHODS.keys()):
                 line = "{}. ".format(k)
