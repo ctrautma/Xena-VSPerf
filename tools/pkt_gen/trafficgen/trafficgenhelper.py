@@ -22,10 +22,10 @@ from collections import namedtuple
 CMD_PREFIX = 'gencmd : '
 TRAFFIC_DEFAULTS = {
     'traffic_type' : 'rfc2544',
-    'frame_rate' : 75,
-    'bidir' : False,
+    'frame_rate' : 100,
+    'bidir' : True,
     'multistream' : 0,
-    'stream_type' : 'L4',
+    'stream_type' : 'L3',
     'pre_installed_flows' : 'No',           # used by vswitch implementation
     'flow_type' : 'port',                   # used by vswitch implementation
 
@@ -44,8 +44,8 @@ TRAFFIC_DEFAULTS = {
         'dstport': 3001,
     },
     'vlan': {
-        'enabled': False,
-        'id': 0,
+        'enabled': True,
+        'id': 5,
         'priority': 0,
         'cfi': 0,
     },
