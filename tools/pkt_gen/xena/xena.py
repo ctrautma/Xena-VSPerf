@@ -432,9 +432,11 @@ class Xena(ITrafficGenerator):
         Time.sleep(5)
 
         stat = self._create_api_result()
+        self.disconnect()
         return stat
 
     def connect(self):
+        self._logger.debug('Connect')
         return self
 
     def disconnect(self):
@@ -447,11 +449,14 @@ class Xena(ITrafficGenerator):
 
         :returns: None
         """
+        self._logger.debug('disconnect')
         if self.xmanager:
             self.xmanager.disconnect()
+            self.xmanager = None
 
         if self._xsocket:
             self._xsocket.disconnect()
+            self._xsocket = None
 
     def send_burst_traffic(self, traffic=None, numpkts=100, duration=20):
         """Send a burst of traffic.

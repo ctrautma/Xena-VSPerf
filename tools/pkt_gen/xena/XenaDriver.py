@@ -73,18 +73,6 @@ CMD_STREAM_MODIFIER_RANGE = 'ps_modifierrange'
 
 _LOGGER = logging.getLogger(__name__)
 
-if len(_LOGGER.handlers) == 0:
-    # no parent logger available, create a temporary one
-    log = logging.getLogger('local_log')
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter(
-            '%(asctime)-15s %(levelname)-10s %(funcName)-20s ' +
-            '%(lineno)-5d %(message)s')
-    handler.setFormatter(formatter)
-    log.addHandler(handler)
-    log.setLevel(logging.DEBUG)
-    _LOGGER = log
-
 
 class SimpleSocket(object):
     """

@@ -63,15 +63,26 @@ class TestProps(object):
 if __name__ == "__main__":
     print("Running Xena VSPerf script UnitTest")
     PROPS = TestProps()
+    import logging
+    import threading
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+
+    stream_logger = logging.StreamHandler(sys.stdout)
+    stream_logger.setLevel(logging.DEBUG)
+    stream_logger.setFormatter(logging.Formatter(
+        '[%(levelname)s]  %(asctime)s : (%(name)s) - %(message)s'))
+    logger.addHandler(stream_logger)
 
     def go_menu():
         """
         Run the Unittest method menu
         :return: None
         """
-        import threading
         from conf import settings
         settings.load_from_dir('./conf')
+
+
         with Xena(debug=True) as XENA_OBJ:
 
             def toggle_debug():
