@@ -583,8 +583,7 @@ class Xena(ITrafficGenerator):
                 "./tools/pkt_gen/xena/profiles/2bUsed.x2544", "-e", "-r",
                 "./tools/pkt_gen/xena", "-u",
                 settings.getValue('TRAFFICGEN_XENA_USER')]
-        self.mono_pipe = subprocess.Popen(
-            args, stdout=sys.stdout if self.debug else subprocess.PIPE)
+        self.mono_pipe = subprocess.Popen(args, stdout=sys.stdout)
         self.mono_pipe.communicate()
         root = ET.parse(r'./tools/pkt_gen/xena/xena2544-report.xml').getroot()
         return Xena._create_throughput_result(root)
@@ -613,8 +612,7 @@ class Xena(ITrafficGenerator):
                 "./tools/pkt_gen/xena/profiles/2bUsed.x2544", "-e", "-r",
                 "./tools/pkt_gen/xena", "-u",
                 settings.getValue('TRAFFICGEN_XENA_USER')]
-        self.mono_pipe = subprocess.Popen(
-            args, stdout=sys.stdout if self.debug else subprocess.PIPE)
+        self.mono_pipe = subprocess.Popen(args, stdout=sys.stdout)
 
     def wait_rfc2544_throughput(self):
         """Wait for and return results of RFC2544 test.
