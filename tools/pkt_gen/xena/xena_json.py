@@ -23,12 +23,14 @@ Xena JSON module
 import base64
 from collections import OrderedDict
 import json
+import locale
 import logging
 import uuid
 
 import scapy.layers.inet as inet
 
 _LOGGER = logging.getLogger(__name__)
+_LOCALE = locale.getlocale()[1]
 
 
 class XenaJSON(object):
@@ -126,14 +128,14 @@ class XenaJSON(object):
         if self.packet_data['layer2']:
             layer2 = packet[0][header_pos: len(self.packet_data['layer2'][0])]
             seg = create_segment(
-                "ETHERNET", encode_byte_array(layer2).decode('utf-8'))
+                "ETHERNET", encode_byte_array(layer2).decode(_LOCALE))
             if multistream_layer == 'L2' and flows > 0:
                 self._add_multistream_layer(entity=0, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=2)
             segment1.append(seg)
             layer2 = packet[1][header_pos: len(self.packet_data['layer2'][1])]
             seg = create_segment(
-                "ETHERNET", encode_byte_array(layer2).decode('utf-8'))
+                "ETHERNET", encode_byte_array(layer2).decode(_LOCALE))
             segment2.append(seg)
             if multistream_layer == 'L2' and flows > 0:
                 self._add_multistream_layer(entity=1, seg_uuid=seg['ItemID'],
@@ -143,15 +145,15 @@ class XenaJSON(object):
             vlan = packet[0][header_pos: len(
                 self.packet_data['vlan'][0]) + header_pos]
             segment1.append(create_segment(
-                "VLAN", encode_byte_array(vlan).decode('utf-8')))
+                "VLAN", encode_byte_array(vlan).decode(_LOCALE)))
             segment2.append(create_segment(
-                "VLAN", encode_byte_array(vlan).decode('utf-8')))
+                "VLAN", encode_byte_array(vlan).decode(_LOCALE)))
             header_pos += len(vlan)
         if self.packet_data['layer3']:
             layer3 = packet[0][header_pos: len(
                 self.packet_data['layer3'][0]) + header_pos]
             seg = create_segment(
-                "IP", encode_byte_array(layer3).decode('utf-8'))
+                "IP", encode_byte_array(layer3).decode(_LOCALE))
             segment1.append(seg)
             if multistream_layer == 'L3' and flows > 0:
                 self._add_multistream_layer(entity=0, seg_uuid=seg['ItemID'],
@@ -159,7 +161,7 @@ class XenaJSON(object):
             layer3 = packet[1][header_pos: len(
                 self.packet_data['layer3'][1]) + header_pos]
             seg = create_segment(
-                "IP", encode_byte_array(layer3).decode('utf-8'))
+                "IP", encode_byte_array(layer3).decode(_LOCALE))
             segment2.append(seg)
             if multistream_layer == 'L3' and flows > 0:
                 self._add_multistream_layer(entity=1, seg_uuid=seg['ItemID'],
@@ -169,7 +171,7 @@ class XenaJSON(object):
             layer4 = packet[0][header_pos: len(
                 self.packet_data['layer4'][0]) + header_pos]
             seg = create_segment(
-                "UDP", encode_byte_array(layer4).decode('utf-8'))
+                "UDP", encode_byte_array(layer4).decode(_LOCALE))
             segment1.append(seg)
             if multistream_layer == 'L4' and flows > 0:
                 print("Layer 4")
@@ -178,7 +180,7 @@ class XenaJSON(object):
             layer3 = packet[1][header_pos: len(
                 self.packet_data['layer4'][1]) + header_pos]
             seg = create_segment(
-                "UDP", encode_byte_array(layer3).decode('utf-8'))
+                "UDP", encode_byte_array(layer3).decode(_LOCALE))
             segment2.append(seg)
             if multistream_layer == 'L4' and flows > 0:
                 print("Layer 4")
@@ -459,7 +461,7 @@ def read_json_file(json_file):
     :return: dictionary of json data
     """
     try:
-        with open(json_file, 'r', encoding='utf-8') as data_file:
+        with open(json_file, 'r', encoding=_LOCALE) as data_file:
             file_data = json.loads(data_file.read())
     except ValueError as exc:
         # general json exception, Python 3.5 adds new exception type
@@ -480,7 +482,7 @@ def write_json_file(json_data, output_path):
     :return: Boolean if success
     """
     try:
-        with open(output_path, 'w', encoding='utf-8') as fileh:
+        with open(output_path, 'w', encoding=_LOCALE) as fileh:
             json.dump(json_data, fileh, indent=2, sort_keys=True,
                       ensure_ascii=True)
         return True

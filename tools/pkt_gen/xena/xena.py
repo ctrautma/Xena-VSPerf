@@ -552,27 +552,7 @@ class Xena(ITrafficGenerator):
                                 lossrate=0.0):
         """Send traffic per RFC2544 throughput test specifications.
 
-        Send packets at a variable rate, using ``traffic``
-        configuration, until minimum rate at which no packet loss is
-        detected is found.
-
-        :param traffic: Detailed "traffic" spec, i.e. IP address, VLAN tags
-        :param trials: Number of trials to execute
-        :param duration: Per iteration duration
-        :param lossrate: Acceptable lossrate percentage
-        :param multistream: Enable multistream output by overriding the
-                        UDP port number in ``traffic`` with values
-                        from 1 to 64,000
-        :returns: dictionary of strings with following data:
-            - Tx Throughput (fps),
-            - Rx Throughput (fps),
-            - Tx Throughput (mbps),
-            - Rx Throughput (mbps),
-            - Tx Throughput (% linerate),
-            - Rx Throughput (% linerate),
-            - Min Latency (ns),
-            - Max Latency (ns),
-            - Avg Latency (ns)
+        See ITrafficGenerator for description
         """
         self._duration = duration
 
@@ -597,12 +577,7 @@ class Xena(ITrafficGenerator):
                                  lossrate=0.0):
         """Non-blocking version of 'send_rfc2544_throughput'.
 
-        Start transmission and immediately return. Do not wait for
-        results.
-        :param traffic: Detailed "traffic" spec, i.e. IP address, VLAN tags
-        :param trials: Number of trials to execute
-        :param duration: Per iteration duration
-        :param lossrate: Acceptable lossrate percentage
+        See ITrafficGenerator for description
         """
         self._duration = duration
         self._params.clear()
@@ -621,6 +596,8 @@ class Xena(ITrafficGenerator):
 
     def wait_rfc2544_throughput(self):
         """Wait for and return results of RFC2544 test.
+
+        See ITrafficGenerator for description
         """
         self.mono_pipe.communicate()
         Time.sleep(2)
