@@ -275,6 +275,8 @@ class Xena(ITrafficGenerator):
         """
         try:
             j_file = XenaJSON('./tools/pkt_gen/xena/profiles/baseconfig.x2544')
+            j_file.set_chassis_info(settings.TRAFFICGEN_XENA_IP,
+                                    settings.TRAFFICGEN_XENA_PASSWORD)
             j_file.set_test_options(
                 packet_sizes=self._params['traffic']['l2']['framesize'],
                 iterations=trials, loss_rate=loss_rate,
@@ -309,7 +311,7 @@ class Xena(ITrafficGenerator):
             else:
                 j_file.set_topology_blocks()
 
-            j_file.write_config()
+            j_file.write_config('./tools/pkt_gen/xena/profiles/2bUsed.x2544')
         except Exception as exc:
             self._logger.exception(
                 "Error during Xena XML setup: {}".format(exc))
