@@ -88,7 +88,10 @@ class Xena(ITrafficGenerator):
     @staticmethod
     def _create_throughput_result(root):
         """
-        :return:
+        Create the results based off the output xml file from the Xena2544.exe
+        execution
+        :param root: root dictionary from xml import
+        :return: Results Ordered dictionary based off ResultsConstants
         """
         throughput_test = False
         back2back_test = False
@@ -313,8 +316,7 @@ class Xena(ITrafficGenerator):
 
             j_file.write_config('./tools/pkt_gen/xena/profiles/2bUsed.x2544')
         except Exception as exc:
-            self._logger.exception(
-                "Error during Xena XML setup: {}".format(exc))
+            self._logger.exception("Error during Xena XML setup: %s", exc)
             raise
 
     def _start_traffic_api(self, packet_limit):
@@ -445,6 +447,7 @@ class Xena(ITrafficGenerator):
         """Disconnect from the traffic generator.
 
         As with :func:`connect`, this function is optional.
+
 
         Where implemented, this function should raise an exception on
         failure.

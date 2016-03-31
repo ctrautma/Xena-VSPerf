@@ -463,12 +463,11 @@ def read_json_file(json_file):
             file_data = json.loads(data_file.read())
     except ValueError as exc:
         # general json exception, Python 3.5 adds new exception type
-        _LOGGER.exception(
-            "Exception with json read: {}".format(exc))
+        _LOGGER.exception("Exception with json read: %s", exc)
         raise
     except IOError as exc:
-        _LOGGER.exception('Exception during file open: {} file={}'.format(
-            exc, json_file))
+        _LOGGER.exception(
+            'Exception during file open: %s file=%s', exc, json_file)
         raise
     return file_data
 
@@ -488,10 +487,10 @@ def write_json_file(json_data, output_path):
     except ValueError as exc:
         # general json exception, Python 3.5 adds new exception type
         _LOGGER.exception(
-            "Exception with json write: {}".format(exc))
+            "Exception with json write: %s", exc)
     except IOError as exc:
-        _LOGGER.exception('Exception during file open: {} file={}'.format(
-            exc, output_path))
+        _LOGGER.exception(
+            'Exception during file write: %s file=%s', exc, output_path)
         return False
 
 
