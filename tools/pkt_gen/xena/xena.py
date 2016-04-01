@@ -269,11 +269,10 @@ class Xena(ITrafficGenerator):
 
     def _setup_json_config(self, trials, loss_rate, testtype=None):
         """
-        Create a 2bUsed xml file that will be used for xena2544.exe execution.
+        Create a 2bUsed json file that will be used for xena2544.exe execution.
         :param trials: Number of trials
         :param loss_rate: The acceptable loss rate as float
         :param testtype: Either '2544_b2b' or '2544_throughput' as string
-        :param multi_stream: This is changing, do not use
         :return: None
         """
         try:
@@ -500,9 +499,6 @@ class Xena(ITrafficGenerator):
 
         :param traffic: Detailed "traffic" spec, i.e. IP address, VLAN tags
         :param duration: Time to wait to receive packets (secs)
-        :param multistream: Enable multistream output by overriding the
-                        UDP port number in ``traffic`` with values
-                        from 1 to 64,000
         :returns: dictionary of strings with following data:
             - Tx Throughput (fps),
             - Rx Throughput (fps),
@@ -617,9 +613,6 @@ class Xena(ITrafficGenerator):
         :param trials: Number of trials to execute
         :param duration: Per iteration duration
         :param lossrate: Acceptable loss percentage
-        :param multistream: Enable multistream output by overriding the
-            UDP port number in ``traffic`` with values from 1 to 64,000
-
         :returns: Named tuple of Rx Throughput (fps), Rx Throughput (mbps),
             Tx Rate (% linerate), Rx Rate (% linerate), Tx Count (frames),
             Back to Back Count (frames), Frame Loss (frames), Frame Loss (%)

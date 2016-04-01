@@ -15,6 +15,9 @@
 # Contributors:
 #   Dan Amzulescu, Xena Networks
 #   Christian Trautman, Red Hat Inc.
+#
+# Usage can be seen below in unit test. This implementation is designed for one
+# module two port Xena chassis runs only.
 
 """
 Xena JSON module
@@ -126,6 +129,7 @@ class XenaJSON(object):
         segment2 = list()
         header_pos = 0
         if self.packet_data['layer2']:
+            # slice out the layer 2 bytes from the packet header byte array
             layer2 = packet[0][header_pos: len(self.packet_data['layer2'][0])]
             seg = create_segment(
                 "ETHERNET", encode_byte_array(layer2).decode(_LOCALE))
@@ -133,6 +137,7 @@ class XenaJSON(object):
                 self._add_multistream_layer(entity=0, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=2)
             segment1.append(seg)
+            # now do the other port data with reversed src, dst info
             layer2 = packet[1][header_pos: len(self.packet_data['layer2'][1])]
             seg = create_segment(
                 "ETHERNET", encode_byte_array(layer2).decode(_LOCALE))
@@ -142,6 +147,7 @@ class XenaJSON(object):
                                             stop_value=flows, layer=2)
             header_pos = len(layer2)
         if self.packet_data['vlan']:
+            # slice out the vlan bytes from the packet header byte array
             vlan = packet[0][header_pos: len(
                 self.packet_data['vlan'][0]) + header_pos]
             segment1.append(create_segment(
@@ -150,6 +156,7 @@ class XenaJSON(object):
                 "VLAN", encode_byte_array(vlan).decode(_LOCALE)))
             header_pos += len(vlan)
         if self.packet_data['layer3']:
+            # slice out the layer 3 bytes from the packet header byte array
             layer3 = packet[0][header_pos: len(
                 self.packet_data['layer3'][0]) + header_pos]
             seg = create_segment(
@@ -158,6 +165,7 @@ class XenaJSON(object):
             if multistream_layer == 'L3' and flows > 0:
                 self._add_multistream_layer(entity=0, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=3)
+            # now do the other port data with reversed src, dst info
             layer3 = packet[1][header_pos: len(
                 self.packet_data['layer3'][1]) + header_pos]
             seg = create_segment(
@@ -168,6 +176,7 @@ class XenaJSON(object):
                                             stop_value=flows, layer=3)
             header_pos += len(layer3)
         if self.packet_data['layer4']:
+            # slice out the layer 4 bytes from the packet header byte array
             layer4 = packet[0][header_pos: len(
                 self.packet_data['layer4'][0]) + header_pos]
             seg = create_segment(
@@ -177,10 +186,11 @@ class XenaJSON(object):
                 print("Layer 4")
                 self._add_multistream_layer(entity=0, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=4)
-            layer3 = packet[1][header_pos: len(
+            # now do the other port data with reversed src, dst info
+            layer4 = packet[1][header_pos: len(
                 self.packet_data['layer4'][1]) + header_pos]
             seg = create_segment(
-                "UDP", encode_byte_array(layer3).decode(_LOCALE))
+                "UDP", encode_byte_array(layer4).decode(_LOCALE))
             segment2.append(seg)
             if multistream_layer == 'L4' and flows > 0:
                 print("Layer 4")
@@ -312,7 +322,7 @@ class XenaJSON(object):
         :param micro_tpld: boolean if micro_tpld should be enabled or disabled
         :return: None
         """
-        if type(packet_sizes) == int:
+        if isinstance(packet_sizes, int):
             packet_sizes = [packet_sizes]
         self.json_data['TestOptions']['PacketSizes'][
             'CustomPacketSizes'] = packet_sizes
@@ -490,6 +500,7 @@ def write_json_file(json_data, output_path):
         # general json exception, Python 3.5 adds new exception type
         _LOGGER.exception(
             "Exception with json write: %s", exc)
+        return False
     except IOError as exc:
         _LOGGER.exception(
             'Exception during file write: %s file=%s', exc, output_path)
