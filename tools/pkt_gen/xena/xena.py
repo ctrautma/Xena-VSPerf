@@ -371,6 +371,10 @@ class Xena(ITrafficGenerator):
 
         self.xmanager.ports[0].set_port_time_limit(self._duration * 1000000)
 
+        if self._params['traffic']['l2']['framesize'] == 64:
+            # set micro tpld
+            self.xmanager.ports[0].micro_tpld_enable()
+
         if self._params['traffic']['multistream']:
             s1_p0.enable_multistream(
                 flows=self._params['traffic']['multistream'],
@@ -390,9 +394,13 @@ class Xena(ITrafficGenerator):
             s1_p1.set_packet_length(
                 'fixed', self._params['traffic']['l2']['framesize'], 16383)
             s1_p1.set_packet_payload('incrementing', '0x00')
-            s1_p1.set_payload_id(0)
+            s1_p1.set_payload_id(1)
 
             self.xmanager.ports[1].set_port_time_limit(self._duration * 1000000)
+
+            if self._params['traffic']['l2']['framesize'] == 64:
+                # set micro tpld
+                self.xmanager.ports[1].micro_tpld_enable()
 
             if self._params['traffic']['multistream']:
                 s1_p1.enable_multistream(
