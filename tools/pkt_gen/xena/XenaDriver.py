@@ -65,6 +65,7 @@ CMD_SET_STREAM_PACKET_LIMIT = 'ps_packetlimit'
 CMD_SET_STREAM_PACKET_PAYLOAD = 'ps_payload'
 CMD_SET_STREAM_RATE_FRACTION = 'ps_ratefraction'
 CMD_SET_STREAM_TEST_PAYLOAD_ID = 'ps_tpldid'
+CMD_SET_TPLD_MODE = 'p_tpldmode'
 CMD_START_TRAFFIC = 'p_traffic on'
 CMD_STOP_TRAFFIC = 'p_traffic off'
 CMD_STREAM_MODIFIER = 'ps_modifier'
@@ -475,6 +476,20 @@ class XenaPort(object):
         tx_data = self._manager.driver.send_query_replies(command)
         data = XenaTXStats(tx_data, time.time())
         return data
+
+    def micro_tpld_disable(self):
+        """Disable micro TPLD and return to standard payload size
+        :return: Boolean if response OK, False if error
+        """
+        command = make_port_command(CMD_SET_TPLD_MODE + ' normal', self)
+        return self._manager.driver.ask_verify(command)
+
+    def micro_tpld_enable(self):
+        """Enable micro TPLD 6 byte payloads.
+        :Return Boolean if response OK, False if error
+        """
+        command = make_port_command(CMD_SET_TPLD_MODE + ' micro', self)
+        return self._manager.driver.ask_verify(command)
 
     def release_port(self):
         """Release the port
@@ -957,14 +972,14 @@ def average_stats(stat1, stat2):
     :return: stats for data entry in RX or TX Stats instance
     """
     newstat = dict()
-    for (keys) in stat1.keys():
-        if type(stat1[keys]) == dict:
-            newstat[keys] = average_stats(stat1[keys], stat2[keys])
+    for (keys1, keys2) in zip(stat1.keys(), stat2.keys()):
+        if type(stat1[keys1]) == dict:
+            newstat[keys1] = average_stats(stat1[keys1], stat2[keys2])
         else:
-            if type(stat1[keys]) != int:
+            if type(stat1[keys1]) != int:
                 # its some value we don't need to average...
-                return stat1[keys]
-            newstat[keys] = (stat1[keys] + stat2[keys]) / 2
+                return stat1[keys1]
+            newstat[keys1] = (stat1[keys1] + stat2[keys2]) / 2
     return newstat
 
 
@@ -1085,7 +1100,7 @@ if __name__ == '__main__':
     P0S0.set_packet_payload('incrementing', '0x00')
     P0S0.set_packet_limit(-1)
     P0S0.set_rate_fraction(1000000)
-    P0S0.set_payload_id(0)
+    P0S0.set_payload_id(1)
     PORT0.set_port_time_limit(1000000 * DURATION)
     PORT0.clear_stats()
     PORT1.clear_stats()
