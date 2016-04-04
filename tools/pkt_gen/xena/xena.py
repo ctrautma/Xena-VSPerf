@@ -30,13 +30,11 @@ from conf import settings
 from core.results.results_constants import ResultsConstants
 from tools.pkt_gen.trafficgen.trafficgenhelper import (
     TRAFFIC_DEFAULTS,
-    merge_spec,
-    Back2BackResult)
+    merge_spec)
 from tools.pkt_gen.trafficgen.trafficgen import ITrafficGenerator
 
 # python imports
 import binascii
-import inspect
 import logging
 import subprocess
 import sys
@@ -93,19 +91,10 @@ class Xena(ITrafficGenerator):
         :param root: root dictionary from xml import
         :return: Results Ordered dictionary based off ResultsConstants
         """
-        throughput_test = False
-        back2back_test = False
-        # get the calling method so we know how to return the stats
-        caller = inspect.stack()[1][3]
-        if 'throughput' in caller:
-            throughput_test = True
-        elif 'back2back' in caller:
-            back2back_test = True
-        else:
-            raise NotImplementedError(
-                "Unknown implementation for result return")
+        # get the test type from the report file
+        test_type = root[0][1].get('TestType')
 
-        if throughput_test:
+        if test_type == 'Throughput':
             results = OrderedDict()
             results[ResultsConstants.THROUGHPUT_RX_FPS] = int(
                 root[0][1][0][1].get('PortRxPps'))
@@ -138,25 +127,14 @@ class Xena(ITrafficGenerator):
             except ValueError:
                 results[ResultsConstants.AVG_LATENCY_NS] = root[0][1][0][0].get(
                     'AvgLatency')
-        elif back2back_test:
-            results = Back2BackResult
+        elif test_type == 'Back2Back':
+            results = OrderedDict()
 
-            # :returns: Named tuple of Rx Throughput (fps),
-            # Rx Throughput (mbps),
-            # Tx Rate (% linerate), Rx Rate (% linerate), Tx Count (frames),
-            # Back to Back Count (frames), Frame Loss (frames), Frame Loss (%)
-
-            results.rx_fps = int(
-                root[0][1][0][1].get('PortRxPps'))
-            results.rx_mbps = int(
-                root[0][1][0][1].get('PortRxBpsL1')) / 1000000
-            results.rx_percent = (
-                100 - int(root[0][1][0].get('TotalLossRatioPcnt'))) * float(
-                    root[0][1][0].get('TotalTxRatePcnt'))/100
-            results.tx_count = root[0][1][0].get(
-                'TotalTxRateFps')
-            results.tx_percent = root[0][1][0].get(
-                'TotalTxRatePcnt')
+            # just mimic what Ixia does and only return the b2b frame count
+            results[ResultsConstants.B2B_FRAMES] = root[0][1][0][0].get(
+                'TotalTxBurstFrames')
+        else:
+            raise NotImplementedError('Unknown test type in report file.')
 
         return results
 
