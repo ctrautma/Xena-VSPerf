@@ -22,9 +22,6 @@
 Xena Traffic Generator Model
 """
 
-# TODO CT List of things that need to be completed
-# 1. Need back to back implementation
-
 # VSPerf imports
 from conf import settings
 from core.results.results_constants import ResultsConstants
@@ -62,13 +59,12 @@ class Xena(ITrafficGenerator):
     _traffic_defaults = TRAFFIC_DEFAULTS.copy()
     _logger = logging.getLogger(__name__)
 
-    def __init__(self, debug=False):
+    def __init__(self):
         self.mono_pipe = None
         self.xmanager = None
         self._params = {}
         self._xsocket = None
         self._duration = None
-        self.debug = debug
         self.tx_stats = None
         self.rx_stats = None
 
@@ -619,10 +615,9 @@ class Xena(ITrafficGenerator):
                 "./tools/pkt_gen/xena", "-u",
                 settings.getValue('TRAFFICGEN_XENA_USER')]
         self.mono_pipe = subprocess.Popen(
-            args, stdout=sys.stdout if self.debug else subprocess.PIPE)
+            args, stdout=sys.stdout)
         self.mono_pipe.communicate()
         root = ET.parse(r'./tools/pkt_gen/xena/xena2544-report.xml').getroot()
-        # TODO change this to the tuple per docstring
         return Xena._create_throughput_result(root)
 
     def start_rfc2544_back2back(self, traffic=None, trials=1, duration=20,
@@ -647,7 +642,7 @@ class Xena(ITrafficGenerator):
                 "./tools/pkt_gen/xena", "-u",
                 settings.getValue('TRAFFICGEN_XENA_USER')]
         self.mono_pipe = subprocess.Popen(
-            args, stdout=sys.stdout if self.debug else subprocess.PIPE)
+            args, stdout=sys.stdout)
 
     def wait_rfc2544_back2back(self):
         """Wait and set results of RFC2544 test.
@@ -655,7 +650,6 @@ class Xena(ITrafficGenerator):
         self.mono_pipe.communicate()
         Time.sleep(2)
         root = ET.parse(r'./tools/pkt_gen/xena/xena2544-report.xml').getroot()
-        # TODO change per docstring tuple specifications
         return Xena._create_throughput_result(root)
 
 
