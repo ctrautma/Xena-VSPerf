@@ -82,15 +82,7 @@ if __name__ == "__main__":
         from conf import settings
         settings.load_from_dir('./conf')
 
-
-        with Xena(debug=True) as XENA_OBJ:
-
-            def toggle_debug():
-                """
-                Toggle debug
-                :return: None
-                """
-                XENA_OBJ.debug = False if XENA_OBJ.debug else True
+        with Xena() as XENA_OBJ:
 
             TESTMETHODS = {
                 1: [XENA_OBJ.send_rfc2544_throughput],
@@ -106,13 +98,11 @@ if __name__ == "__main__":
                 9: [PROPS.increase_framesize],
                 10: [PROPS.set_duration],
                 11: [PROPS.set_trials],
-                12: [toggle_debug],
-                13: [sys.exit],
+                12: [sys.exit],
             }
             print("Packet size: {} | duration: {}".format(PROPS.framesize,
                                                           PROPS.duration))
             print("Trials for 2544 tests: {}".format(PROPS.trials))
-            print("DEBUG is {}".format('ON' if XENA_OBJ.debug else 'OFF'))
             print("Thread count: {}".format(threading.active_count()))
             print("What method to test?")
             for k in sorted(TESTMETHODS.keys()):
