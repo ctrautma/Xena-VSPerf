@@ -109,18 +109,21 @@ class Xena(ITrafficGenerator):
                 results[ResultsConstants.MIN_LATENCY_NS] = float(
                     root[0][1][0][0].get('MinLatency')) * 1000
             except ValueError:
+                # Stats for latency returned as N/A so just post them
                 results[ResultsConstants.MIN_LATENCY_NS] = root[0][1][0][0].get(
                     'MinLatency')
             try:
                 results[ResultsConstants.MAX_LATENCY_NS] = float(
                     root[0][1][0][0].get('MaxLatency')) * 1000
             except ValueError:
+                # Stats for latency returned as N/A so just post them
                 results[ResultsConstants.MAX_LATENCY_NS] = root[0][1][0][0].get(
                     'MaxLatency')
             try:
                 results[ResultsConstants.AVG_LATENCY_NS] = float(
                     root[0][1][0][0].get('AvgLatency')) * 1000
             except ValueError:
+                # Stats for latency returned as N/A so just post them
                 results[ResultsConstants.AVG_LATENCY_NS] = root[0][1][0][0].get(
                     'AvgLatency')
         elif test_type == 'Back2Back':
@@ -251,8 +254,16 @@ class Xena(ITrafficGenerator):
         """
         try:
             j_file = XenaJSON('./tools/pkt_gen/xena/profiles/baseconfig.x2544')
-            j_file.set_chassis_info(settings.TRAFFICGEN_XENA_IP,
-                                    settings.TRAFFICGEN_XENA_PASSWORD)
+            j_file.set_chassis_info(
+                settings.getValue('TRAFFICGEN_XENA_IP'),
+                settings.getValue('TRAFFICGEN_XENA_PASSWORD')
+            )
+            j_file.set_port(0, settings.getValue('TRAFFICGEN_XENA_MODULE1'),
+                            settings.getValue('TRAFFICGEN_XENA_PORT1')
+                            )
+            j_file.set_port(1, settings.getValue('TRAFFICGEN_XENA_MODULE2'),
+                            settings.getValue('TRAFFICGEN_XENA_PORT2')
+                            )
             j_file.set_test_options(
                 packet_sizes=self._params['traffic']['l2']['framesize'],
                 iterations=trials, loss_rate=loss_rate,
@@ -586,19 +597,7 @@ class Xena(ITrafficGenerator):
                                lossrate=0.0):
         """Send traffic per RFC2544 back2back test specifications.
 
-        Send packets at a fixed rate, using ``traffic``
-        configuration, until minimum time at which no packet loss is
-        detected is found.
-
-        :param traffic: Detailed "traffic" spec, i.e. IP address, VLAN
-            tags
-        :param trials: Number of trials to execute
-        :param duration: Per iteration duration
-        :param lossrate: Acceptable loss percentage
-        :returns: Named tuple of Rx Throughput (fps), Rx Throughput (mbps),
-            Tx Rate (% linerate), Rx Rate (% linerate), Tx Count (frames),
-            Back to Back Count (frames), Frame Loss (frames), Frame Loss (%)
-        :rtype: :class:`Back2BackResult`
+        See ITrafficGenerator for description
         """
         self._duration = duration
 
@@ -624,8 +623,7 @@ class Xena(ITrafficGenerator):
                                 lossrate=0.0):
         """Non-blocking version of 'send_rfc2544_back2back'.
 
-        Start transmission and immediately return. Do not wait for
-        results.
+        See ITrafficGenerator for description
         """
         self._duration = duration
 
