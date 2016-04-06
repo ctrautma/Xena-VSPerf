@@ -183,7 +183,6 @@ class XenaJSON(object):
                 "UDP", encode_byte_array(layer4).decode(_LOCALE))
             segment1.append(seg)
             if multistream_layer == 'L4' and flows > 0:
-                print("Layer 4")
                 self._add_multistream_layer(entity=0, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=4)
             # now do the other port data with reversed src, dst info
@@ -193,7 +192,6 @@ class XenaJSON(object):
                 "UDP", encode_byte_array(layer4).decode(_LOCALE))
             segment2.append(seg)
             if multistream_layer == 'L4' and flows > 0:
-                print("Layer 4")
                 self._add_multistream_layer(entity=1, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=4)
             header_pos += len(layer4)
@@ -247,7 +245,7 @@ class XenaJSON(object):
         self.json_data['ChassisManager']['ChassisList'][0][
             'Password'] = pwd
 
-    def set_header_layer2(self, dst_mac='aa:aa:aa:aa:aa:aa',
+    def set_header_layer2(self, dst_mac='cc:cc:cc:cc:cc:cc',
                           src_mac='bb:bb:bb:bb:bb:bb', **kwargs):
         """
         Build a scapy Ethernet L2 objects inside instance packet_data structure
