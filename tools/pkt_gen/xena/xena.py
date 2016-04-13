@@ -1,4 +1,4 @@
-# Copyright 2016 Red Hat Inc & Xena Networks.
+ # Copyright 2016 Red Hat Inc & Xena Networks.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -238,8 +238,57 @@ class Xena(ITrafficGenerator):
                               prio=self._params['traffic']['vlan']['priority'],
                               id=self._params['traffic']['vlan']['cfi'])
         else:
-            vlan = None
-        packet = layer2/vlan/layer3/layer4 if vlan else layer2/layer3/layer4
+            None
+        if self._params['traffic']['vxlan']['enabled']:
+            srcmac = self._params['traffic']['vxlan']['l2'][
+                'srcmac'] if not reverse else self._params['traffic']['vxlan']['l2'][
+                'dstmac']
+            dstmac = self._params['traffic']['vxlan']['l2'][
+                'dstmac'] if not reverse else self._params['traffic']['vxlan']['l2'][
+                'srcmac']
+            layer2 = inet.Ether(src=srcmac, dst=dstmac)
+            
+            srcip = self._params['traffic']['vxlan']['l3'][
+                'srcip'] if not reverse else self._params['traffic']['vxlan']['l3'][
+                'dstip']
+            dstip = self._params['traffic']['vxlan']['l3'][
+                'dstip'] if not reverse else self._params['traffic']['vxlan']['l3'][
+                'srcip']
+            layer3 = inet.IP(src=srcip, dst=dstip,
+                             proto=self._params['traffic']['vxlan']['l3']['proto'])
+            layer4 = inet.UDP(sport=self._params['traffic']['vxlan']['l4']['srcport'],
+                              dport=self._params['traffic']['vxlan']['l4']['dstport'])
+            vxlan = VXLAN(vni=self._params['traffic']['vxlan']['l4']['vni'])
+            inner_srcmac = self._params['traffic']['vxlan']['l4'][
+                'inner_srcmac']if not reverse else self._params['traffic']['vxlan']['l4'][
+                'inner_dstmac']
+            inner_dstmac = self._params['traffic']['vxlan']['l4'][
+                'inner_dstmac'] if not reverse else self._params['traffic']['vxlan']['l4'][
+                'inner_srcmac']
+            vxlan_layer2 = inet.Ether(src=inner_srcmac, dst=inner_dstmac)
+            inner_srcip = self._params['traffic']['vxlan']['l4'][
+                'inner_srcip'] if not reverse else self._params['traffic']['vxlan']['l4'][
+                'inner_dstip']
+            inner_dstip = self._params['traffic']['vxlan']['l4'][
+                'inner_dstip'] if not reverse else self._params['traffic']['vxlan']['l4'][
+                'inner_srcip']
+            vxlan_layer3 = inet.IP(src=inner_srcip, dst=inner_dstip,
+                         proto=self._params['traffic']['vxlan']['l4']['inner_proto'])
+            vxlan_layer4 = inet.UDP(sport=self._params['traffic']['vxlan']['l4']['inner_srcport'],
+                          dport=self._params['traffic']['vxlan']['l4']['inner_dstport'])
+        else:
+            vxlan = None
+            
+        if self._params['traffic']['gre']['enabled']:
+            gre = inet.GRE(key_present=self._params['traffic']['gre']['l2'][''], key=900)
+            
+        if vlan:
+            packet = layer2/vlan/layer3/layer4
+        elif vxlan:
+            packet = layer2/layer3/layer4/vxlan/vxlan_layer2/vxlan_layer3/vxlan_layer4
+        else:
+            packet = layer2/layer3/layer4
+        
         packet_bytes = bytes(packet)
         packet_hex = '0x' + binascii.hexlify(packet_bytes).decode('utf-8')
         return packet_hex
@@ -346,9 +395,13 @@ class Xena(ITrafficGenerator):
 
         s1_p0.set_rate_fraction(10000 * self._params['traffic']['frame_rate'])
         s1_p0.set_packet_header(self._build_packet_header())
-        s1_p0.set_header_protocol(
-            'ETHERNET VLAN IP UDP' if self._params['traffic']['vlan'][
-                'enabled'] else 'ETHERNET IP UDP')
+        if self._params['traffic']['vlan']['enabled']:
+            header_layer = 'ETHERNET VLAN IP UDP' 
+        elif self._params['traffic']['vxlan']['enabled']:
+            header_layer = 'ETHERNET IP UDP VXLAN ETHERNET IP UDP'
+        else:
+            'ETHERNET IP UDP'
+        s1_p0.set_header_protocol(header_layer)
         s1_p0.set_packet_length(
             'fixed', self._params['traffic']['l2']['framesize'], 16383)
         s1_p0.set_packet_payload('incrementing', '0x00')
