@@ -281,6 +281,9 @@ class Xena(ITrafficGenerator):
             
         if self._params['traffic']['gre']['enabled']:
             gre = inet.GRE(key_present=self._params['traffic']['gre']['l2'][''], key=900)
+
+        if self._params['traffic']['gevene']['enabled']:
+	    pass
             
         if vlan:
             packet = layer2/vlan/layer3/layer4
