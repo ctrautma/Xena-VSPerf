@@ -1105,6 +1105,7 @@ if __name__ == '__main__':
     #p.show()
     #packet_bytes = bytes(p)
     #packet_hex = '0x' + binascii.hexlify(packet_bytes).decode('utf-8')
+    #P0S0.set_packet_header(packet_hex)
     P0S0.set_packet_header('0x525400c61020525400c61010080045000014000100004' +
                            '00066e70a0000010a000002')
     P0S0.set_packet_length('fixed', PACKET_SIZE, 16383)
