@@ -1094,6 +1094,17 @@ if __name__ == '__main__':
     PORT1.reset_port()
     P0S0 = PORT0.add_stream()
     P0S0.set_on()
+    from vxlan import VXLAN
+    from geneve import GENEVE
+    from scapy.layers.l2 import Ether
+    from scapy.layers.inet import *
+    import binascii
+    #p=Ether(src='a0:36:9f:95:08:ac',dst='a0:36:9f:95:08:ae')/IP(src='192.168.240.11',dst='192.168.240.10')/UDP(sport=52800,dport=4789)/VXLAN(vni=120)/Ether(src='01:02:03:04:05:06',dst='06:05:04:03:02:01')/IP(src='192.168.0.10', dst='192.168.240.9')/UDP(sport=RandShort(),dport=3001)
+    #p=Ether(src='a0:36:9f:95:08:ac',dst='a0:36:9f:95:08:ae')/IP(src='192.168.240.11',dst='192.168.240.10')/GRE(key_present=1,key=900)/IP(src='192.168.0.10', dst='192.168.240.9')/UDP(sport=RandShort(),dport=3001)
+    #p=Ether(src='a0:36:9f:95:08:ac',dst='a0:36:9f:95:08:ae')/IP(src='192.168.240.11',dst='192.168.240.10')/UDP(sport=52800,dport=6081)/GENEVE(vni=120)/Ether(src='01:02:03:04:05:06',dst='06:05:04:03:02:01')/IP(src='192.168.0.10', dst='192.168.240.9')/UDP(sport=RandShort(),dport=3001)
+    #p.show()
+    #packet_bytes = bytes(p)
+    #packet_hex = '0x' + binascii.hexlify(packet_bytes).decode('utf-8')
     P0S0.set_packet_header('0x525400c61020525400c61010080045000014000100004' +
                            '00066e70a0000010a000002')
     P0S0.set_packet_length('fixed', PACKET_SIZE, 16383)
