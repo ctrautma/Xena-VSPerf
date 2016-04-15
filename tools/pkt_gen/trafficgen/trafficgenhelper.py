@@ -23,32 +23,42 @@ CMD_PREFIX = 'gencmd : '
 TRAFFIC_DEFAULTS = {
     'traffic_type' : 'rfc2544',
     'frame_rate' : 100,
-    'bidir' : True,
+    'bidir' : False,
     'multistream' : 0,
-    'stream_type' : 'L3',
+    'stream_type' : 'L4',
     'pre_installed_flows' : 'No',           # used by vswitch implementation
     'flow_type' : 'port',                   # used by vswitch implementation
 
     'l2': {
-        'framesize': 128,
-        'srcmac': 'aa:aa:aa:aa:aa:aa',
-        'dstmac': 'bb:bb:bb:bb:bb:bb',
+        'framesize': 64,
+        'srcmac': '00:00:00:00:00:00',
+        'dstmac': '00:00:00:00:00:00',
     },
     'l3': {
         'proto': 'udp',
-        'srcip': '192.168.100.10',
-        'dstip': '192.168.100.11',
+        'srcip': '1.1.1.1',
+        'dstip': '90.90.90.90',
     },
     'l4': {
-        'srcport': 3000,
-        'dstport': 3001,
+        'srcport': 5000,
+        'dstport': 5001,
     },
     'vlan': {
-        'enabled': True,
-        'id': 5,
+        'enabled': False,
+        'id': 0,
         'priority': 0,
         'cfi': 0,
     },
+    'vxlan': {
+        'enabled': False,
+    },
+    'gre': {
+        'enabled': False,
+    },
+    'geneve': {
+        'enabled': True,
+    },
+
 }
 
 #TODO remove namedtuples and implement results through IResult interface found
