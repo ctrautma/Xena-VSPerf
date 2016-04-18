@@ -23,16 +23,18 @@ CMD_PREFIX = 'gencmd : '
 TRAFFIC_DEFAULTS = {
     'traffic_type' : 'rfc2544',
     'frame_rate' : 100,
-    'bidir' : True,
+    'bidir' : False,
     'multistream' : 0,
     'stream_type' : 'L3',
     'pre_installed_flows' : 'No',           # used by vswitch implementation
     'flow_type' : 'port',                   # used by vswitch implementation
 
     'l2': {
-        'framesize': 128,
-        'srcmac': 'aa:aa:aa:aa:aa:aa',
-        'dstmac': 'bb:bb:bb:bb:bb:bb',
+        'framesize': 64,
+        # 'srcmac': 'a0:36:9f:85:89:d8',
+        # 'dstmac': 'a0:36:9f:85:89:da',
+        'srcmac' : '04:f4:bc:2f:c8:c0',
+        'dstmac' : '04:f4:bc:2f:c8:c1',
     },
     'l3': {
         'proto': 'udp',
@@ -44,7 +46,7 @@ TRAFFIC_DEFAULTS = {
         'dstport': 3001,
     },
     'vlan': {
-        'enabled': True,
+        'enabled': False,
         'id': 5,
         'priority': 0,
         'cfi': 0,
