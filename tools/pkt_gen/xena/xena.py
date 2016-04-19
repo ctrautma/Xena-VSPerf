@@ -50,7 +50,12 @@ from tools.pkt_gen.xena.xena_json import XenaJSON
 
 # scapy imports
 import scapy.layers.inet as inet
+GLB_DEBUG=True
 
+#tunnel need imports
+from scapy.layers.inet import GRE
+from tools.pkt_gen.xena.vxlan import VXLAN
+from tools.pkt_gen.xena.geneve import GENEVE
 
 class Xena(ITrafficGenerator):
     """
@@ -109,21 +114,18 @@ class Xena(ITrafficGenerator):
                 results[ResultsConstants.MIN_LATENCY_NS] = float(
                     root[0][1][0][0].get('MinLatency')) * 1000
             except ValueError:
-                # Stats for latency returned as N/A so just post them
                 results[ResultsConstants.MIN_LATENCY_NS] = root[0][1][0][0].get(
                     'MinLatency')
             try:
                 results[ResultsConstants.MAX_LATENCY_NS] = float(
                     root[0][1][0][0].get('MaxLatency')) * 1000
             except ValueError:
-                # Stats for latency returned as N/A so just post them
                 results[ResultsConstants.MAX_LATENCY_NS] = root[0][1][0][0].get(
                     'MaxLatency')
             try:
                 results[ResultsConstants.AVG_LATENCY_NS] = float(
                     root[0][1][0][0].get('AvgLatency')) * 1000
             except ValueError:
-                # Stats for latency returned as N/A so just post them
                 results[ResultsConstants.AVG_LATENCY_NS] = root[0][1][0][0].get(
                     'AvgLatency')
         elif test_type == 'Back2Back':
@@ -237,9 +239,65 @@ class Xena(ITrafficGenerator):
             vlan = inet.Dot1Q(vlan=self._params['traffic']['vlan']['id'],
                               prio=self._params['traffic']['vlan']['priority'],
                               id=self._params['traffic']['vlan']['cfi'])
+            packet = layer2/vlan/layer3/layer4
+        
+        elif self._params['traffic']['vxlan']['enabled']: 
+            srcmac = settings.VXLAN_FRAME_L2['srcmac'] if not reverse else settings.VXLAN_FRAME_L2['dstmac']
+            dstmac = settings.VXLAN_FRAME_L2['dstmac'] if not reverse else settings.VXLAN_FRAME_L2['srcmac']
+            layer2 = inet.Ether(src=srcmac, dst=dstmac)
+            srcip = settings.VXLAN_FRAME_L3['srcip'] if not reverse else settings.VXLAN_FRAME_L3['dstip']
+            dstip = settings.VXLAN_FRAME_L3['dstip'] if not reverse else settings.VXLAN_FRAME_L3['srcip']
+            layer3 = inet.IP(src=srcip, dst=dstip,proto=settings.VXLAN_FRAME_L3['proto'])
+            layer4 = inet.UDP(sport=settings.VXLAN_FRAME_L4['srcport'],dport=settings.VXLAN_FRAME_L4['dstport'])
+            vxlan = VXLAN(vni=settings.VXLAN_FRAME_L4['vni'])
+            inner_srcmac = settings.VXLAN_FRAME_L4['inner_srcmac']
+            inner_dstmac = settings.VXLAN_FRAME_L4['inner_dstmac']
+            vxlan_layer2 = inet.Ether(src=inner_srcmac, dst=inner_dstmac)
+            inner_srcip = settings.VXLAN_FRAME_L4['inner_srcip']
+            inner_dstip = settings.VXLAN_FRAME_L4['inner_dstip']
+            vxlan_layer3 = inet.IP(src=inner_srcip, dst=inner_dstip,proto=settings.VXLAN_FRAME_L4['inner_proto'])
+            vxlan_layer4 = inet.UDP(sport=settings.VXLAN_FRAME_L4['inner_srcport'],dport=settings.VXLAN_FRAME_L4['inner_dstport'])
+            packet = layer2/layer3/layer4/vxlan/vxlan_layer2/vxlan_layer3/vxlan_layer4
+        
+        elif self._params['traffic']['geneve']['enabled']:
+            srcmac = settings.GENEVE_FRAME_L2['srcmac'] if not reverse else settings.GENEVE_FRAME_L2['dstmac']
+            dstmac = settings.GENEVE_FRAME_L2['dstmac'] if not reverse else settings.GENEVE_FRAME_L2['srcmac']
+            layer2 = inet.Ether(src=srcmac, dst=dstmac)
+            srcip = settings.GENEVE_FRAME_L3['srcip'] if not reverse else settings.GENEVE_FRAME_L3['dstip']
+            dstip = settings.GENEVE_FRAME_L3['dstip'] if not reverse else settings.GENEVE_FRAME_L3['srcip']
+            layer3 = inet.IP(src=srcip, dst=dstip,proto=settings.GENEVE_FRAME_L3['proto'])
+            layer4 = inet.UDP(sport=settings.GENEVE_FRAME_L4['srcport'],dport=settings.GENEVE_FRAME_L4['dstport'])
+            geneve = GENEVE(vni=settings.GENEVE_FRAME_L4['geneve_vni'])
+            inner_srcmac = settings.GENEVE_FRAME_L4['inner_srcmac']
+            inner_dstmac = settings.GENEVE_FRAME_L4['inner_dstmac']
+            geneve_layer2 = inet.Ether(src=inner_srcmac, dst=inner_dstmac)
+            inner_srcip = settings.GENEVE_FRAME_L4['inner_srcip']
+            inner_dstip = settings.GENEVE_FRAME_L4['inner_dstip']
+            geneve_layer3 = inet.IP(src=inner_srcip, dst=inner_dstip,proto=settings.GENEVE_FRAME_L4['inner_proto'])
+            geneve_layer4 = inet.UDP(sport=settings.GENEVE_FRAME_L4['inner_srcport'],dport=settings.GENEVE_FRAME_L4['inner_dstport'])
+            packet = layer2/layer3/layer4/geneve/geneve_layer2/geneve_layer3/geneve_layer4
+
+        elif self._params['traffic']['gre']['enabled']:
+            srcmac = settings.GRE_FRAME_L2['srcmac'] if not reverse else settings.GRE_FRAME_L2['dstmac']
+            dstmac = settings.GRE_FRAME_L2['dstmac'] if not reverse else settings.GRE_FRAME_L2['srcmac']
+            layer2 = inet.Ether(src=srcmac, dst=dstmac)
+            srcip = settings.GRE_FRAME_L3['srcip'] if not reverse else settings.GRE_FRAME_L3['dstip']
+            dstip = settings.GRE_FRAME_L3['dstip'] if not reverse else settings.GRE_FRAME_L3['srcip']
+            layer3 = inet.IP(src=srcip, dst=dstip,proto=settings.GRE_FRAME_L3['proto'])
+            #layer4 = inet.UDP(sport=settings.GRE_FRAME_L4['srcport'],dport=settings.GRE_FRAME_L4['dstport'])
+            gre = GRE(key_present=settings.GRE_FRAME_L4['key_present'],key=settings.GRE_FRAME_L4['key'])
+            #inner_srcmac = settings.GRE_FRAME_L4['inner_srcmac']
+            #inner_dstmac = settings.GRE_FRAME_L4['inner_dstmac']
+            #gre_layer2 = inet.Ether(src=inner_srcmac, dst=inner_dstmac)
+            inner_srcip = settings.GRE_FRAME_L4['inner_srcip']
+            inner_dstip = settings.GRE_FRAME_L4['inner_dstip']
+            gre_layer3 = inet.IP(src=inner_srcip, dst=inner_dstip,proto=settings.GRE_FRAME_L4['inner_proto'])
+            gre_layer4 = inet.UDP(sport=settings.GRE_FRAME_L4['inner_srcport'],dport=settings.GRE_FRAME_L4['inner_dstport'])
+            packet = layer2/layer3/gre/gre_layer3/gre_layer4
+
         else:
-            vlan = None
-        packet = layer2/vlan/layer3/layer4 if vlan else layer2/layer3/layer4
+            packet = layer2/layer3/layer4
+             
         packet_bytes = bytes(packet)
         packet_hex = '0x' + binascii.hexlify(packet_bytes).decode('utf-8')
         return packet_hex
@@ -254,16 +312,8 @@ class Xena(ITrafficGenerator):
         """
         try:
             j_file = XenaJSON('./tools/pkt_gen/xena/profiles/baseconfig.x2544')
-            j_file.set_chassis_info(
-                settings.getValue('TRAFFICGEN_XENA_IP'),
-                settings.getValue('TRAFFICGEN_XENA_PASSWORD')
-            )
-            j_file.set_port(0, settings.getValue('TRAFFICGEN_XENA_MODULE1'),
-                            settings.getValue('TRAFFICGEN_XENA_PORT1')
-                            )
-            j_file.set_port(1, settings.getValue('TRAFFICGEN_XENA_MODULE2'),
-                            settings.getValue('TRAFFICGEN_XENA_PORT2')
-                            )
+            j_file.set_chassis_info(settings.TRAFFICGEN_XENA_IP,
+                                    settings.TRAFFICGEN_XENA_PASSWORD)
             j_file.set_test_options(
                 packet_sizes=self._params['traffic']['l2']['framesize'],
                 iterations=trials, loss_rate=loss_rate,
@@ -284,6 +334,16 @@ class Xena(ITrafficGenerator):
             j_file.set_header_layer4_udp(
                 source_port=self._params['traffic']['l4']['srcport'],
                 destination_port=self._params['traffic']['l4']['dstport'])
+            #rita
+            #if self._params['traffic']['vxlan']['enabled']:
+            j_file.set_header_vxlan(vni=0)
+            j_file.set_header_vxlan_layer2(
+                dst_mac='02:00:00:00:00:02',
+                src_mac='02:00:00:00:00:01')
+            j_file.set_header_vxlan_layer3(
+                src_ip='192.168.0.2',
+                dst_ip='192.168.240.9')
+
             if self._params['traffic']['vlan']['enabled']:
                 j_file.set_header_vlan(
                     vlan_id=self._params['traffic']['vlan']['id'],
@@ -504,7 +564,6 @@ class Xena(ITrafficGenerator):
             - Avg Latency (ns)
         """
         self._duration = duration
-
         self._params.clear()
         self._params['traffic'] = self.traffic_defaults.copy()
         if traffic:
@@ -597,7 +656,19 @@ class Xena(ITrafficGenerator):
                                lossrate=0.0):
         """Send traffic per RFC2544 back2back test specifications.
 
-        See ITrafficGenerator for description
+        Send packets at a fixed rate, using ``traffic``
+        configuration, until minimum time at which no packet loss is
+        detected is found.
+
+        :param traffic: Detailed "traffic" spec, i.e. IP address, VLAN
+            tags
+        :param trials: Number of trials to execute
+        :param duration: Per iteration duration
+        :param lossrate: Acceptable loss percentage
+        :returns: Named tuple of Rx Throughput (fps), Rx Throughput (mbps),
+            Tx Rate (% linerate), Rx Rate (% linerate), Tx Count (frames),
+            Back to Back Count (frames), Frame Loss (frames), Frame Loss (%)
+        :rtype: :class:`Back2BackResult`
         """
         self._duration = duration
 
@@ -623,7 +694,8 @@ class Xena(ITrafficGenerator):
                                 lossrate=0.0):
         """Non-blocking version of 'send_rfc2544_back2back'.
 
-        See ITrafficGenerator for description
+        Start transmission and immediately return. Do not wait for
+        results.
         """
         self._duration = duration
 

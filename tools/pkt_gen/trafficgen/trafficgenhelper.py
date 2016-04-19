@@ -25,7 +25,7 @@ TRAFFIC_DEFAULTS = {
     'frame_rate' : 100,
     'bidir' : False,
     'multistream' : 0,
-    'stream_type' : 'L3',
+    'stream_type' : 'L4',
     'pre_installed_flows' : 'No',           # used by vswitch implementation
     'flow_type' : 'port',                   # used by vswitch implementation
 
@@ -38,12 +38,12 @@ TRAFFIC_DEFAULTS = {
     },
     'l3': {
         'proto': 'udp',
-        'srcip': '192.168.100.10',
-        'dstip': '192.168.100.11',
+        'srcip': '1.1.1.1',
+        'dstip': '90.90.90.90',
     },
     'l4': {
-        'srcport': 3000,
-        'dstport': 3001,
+        'srcport': 5000,
+        'dstport': 5001,
     },
     'vlan': {
         'enabled': False,
@@ -51,6 +51,16 @@ TRAFFIC_DEFAULTS = {
         'priority': 0,
         'cfi': 0,
     },
+    'vxlan': {
+        'enabled': False,
+    },
+    'gre': {
+        'enabled': False,
+    },
+    'geneve': {
+        'enabled': True,
+    },
+
 }
 
 #TODO remove namedtuples and implement results through IResult interface found
