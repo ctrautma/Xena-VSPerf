@@ -51,16 +51,6 @@ TRAFFIC_DEFAULTS = {
         'priority': 0,
         'cfi': 0,
     },
-    'vxlan': {
-        'enabled': False,
-    },
-    'gre': {
-        'enabled': False,
-    },
-    'geneve': {
-        'enabled': True,
-    },
-
 }
 
 #TODO remove namedtuples and implement results through IResult interface found

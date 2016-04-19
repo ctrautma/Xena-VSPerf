@@ -220,6 +220,8 @@ class Xena(ITrafficGenerator):
         :param reverse: Swap source and destination info when building header
         :return: packet header in hex
         """
+        import pdb
+        pdb.set_trace()
         srcmac = self._params['traffic']['l2'][
             'srcmac'] if not reverse else self._params['traffic']['l2'][
             'dstmac']
@@ -241,7 +243,7 @@ class Xena(ITrafficGenerator):
                               id=self._params['traffic']['vlan']['cfi'])
             packet = layer2/vlan/layer3/layer4
         
-        elif self._params['traffic']['vxlan']['enabled']: 
+        elif self._params['traffic']['tunnel_type'] == 'vxlan': 
             srcmac = settings.VXLAN_FRAME_L2['srcmac'] if not reverse else settings.VXLAN_FRAME_L2['dstmac']
             dstmac = settings.VXLAN_FRAME_L2['dstmac'] if not reverse else settings.VXLAN_FRAME_L2['srcmac']
             layer2 = inet.Ether(src=srcmac, dst=dstmac)
@@ -259,7 +261,7 @@ class Xena(ITrafficGenerator):
             vxlan_layer4 = inet.UDP(sport=settings.VXLAN_FRAME_L4['inner_srcport'],dport=settings.VXLAN_FRAME_L4['inner_dstport'])
             packet = layer2/layer3/layer4/vxlan/vxlan_layer2/vxlan_layer3/vxlan_layer4
         
-        elif self._params['traffic']['geneve']['enabled']:
+        elif self._params['traffic']['tunnel_type'] == 'geneve':
             srcmac = settings.GENEVE_FRAME_L2['srcmac'] if not reverse else settings.GENEVE_FRAME_L2['dstmac']
             dstmac = settings.GENEVE_FRAME_L2['dstmac'] if not reverse else settings.GENEVE_FRAME_L2['srcmac']
             layer2 = inet.Ether(src=srcmac, dst=dstmac)
@@ -277,7 +279,7 @@ class Xena(ITrafficGenerator):
             geneve_layer4 = inet.UDP(sport=settings.GENEVE_FRAME_L4['inner_srcport'],dport=settings.GENEVE_FRAME_L4['inner_dstport'])
             packet = layer2/layer3/layer4/geneve/geneve_layer2/geneve_layer3/geneve_layer4
 
-        elif self._params['traffic']['gre']['enabled']:
+        elif self._params['traffic']['tunnel_type'] == 'gre':
             srcmac = settings.GRE_FRAME_L2['srcmac'] if not reverse else settings.GRE_FRAME_L2['dstmac']
             dstmac = settings.GRE_FRAME_L2['dstmac'] if not reverse else settings.GRE_FRAME_L2['srcmac']
             layer2 = inet.Ether(src=srcmac, dst=dstmac)
