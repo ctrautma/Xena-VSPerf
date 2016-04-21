@@ -242,8 +242,8 @@ class Xena(ITrafficGenerator):
                               prio=self._params['traffic']['vlan']['priority'],
                               id=self._params['traffic']['vlan']['cfi'])
             packet = layer2/vlan/layer3/layer4
-        
-        elif self._params['traffic']['tunnel_type'] == 'vxlan': 
+
+        elif ('tunnel_type' in self._params['traffic'] and self._params['traffic']['tunnel_type'] == 'vxlan'):
             srcmac = settings.VXLAN_FRAME_L2['srcmac'] if not reverse else settings.VXLAN_FRAME_L2['dstmac']
             dstmac = settings.VXLAN_FRAME_L2['dstmac'] if not reverse else settings.VXLAN_FRAME_L2['srcmac']
             layer2 = inet.Ether(src=srcmac, dst=dstmac)
@@ -260,8 +260,8 @@ class Xena(ITrafficGenerator):
             vxlan_layer3 = inet.IP(src=inner_srcip, dst=inner_dstip,proto=settings.VXLAN_FRAME_L4['inner_proto'])
             vxlan_layer4 = inet.UDP(sport=settings.VXLAN_FRAME_L4['inner_srcport'],dport=settings.VXLAN_FRAME_L4['inner_dstport'])
             packet = layer2/layer3/layer4/vxlan/vxlan_layer2/vxlan_layer3/vxlan_layer4
-        
-        elif self._params['traffic']['tunnel_type'] == 'geneve':
+ 
+        elif ('tunnel_type' in self._params['traffic'] and self._params['traffic']['tunnel_type'] == 'geneve'):
             srcmac = settings.GENEVE_FRAME_L2['srcmac'] if not reverse else settings.GENEVE_FRAME_L2['dstmac']
             dstmac = settings.GENEVE_FRAME_L2['dstmac'] if not reverse else settings.GENEVE_FRAME_L2['srcmac']
             layer2 = inet.Ether(src=srcmac, dst=dstmac)
@@ -279,7 +279,7 @@ class Xena(ITrafficGenerator):
             geneve_layer4 = inet.UDP(sport=settings.GENEVE_FRAME_L4['inner_srcport'],dport=settings.GENEVE_FRAME_L4['inner_dstport'])
             packet = layer2/layer3/layer4/geneve/geneve_layer2/geneve_layer3/geneve_layer4
 
-        elif self._params['traffic']['tunnel_type'] == 'gre':
+        elif ('tunnel_type' in self._params['traffic'] and self._params['traffic']['tunnel_type'] == 'gre'):
             srcmac = settings.GRE_FRAME_L2['srcmac'] if not reverse else settings.GRE_FRAME_L2['dstmac']
             dstmac = settings.GRE_FRAME_L2['dstmac'] if not reverse else settings.GRE_FRAME_L2['srcmac']
             layer2 = inet.Ether(src=srcmac, dst=dstmac)
@@ -336,6 +336,7 @@ class Xena(ITrafficGenerator):
             j_file.set_header_layer4_udp(
                 source_port=self._params['traffic']['l4']['srcport'],
                 destination_port=self._params['traffic']['l4']['dstport'])
+            '''
             #rita
             #if self._params['traffic']['vxlan']['enabled']:
             j_file.set_header_vxlan(vni=0)
@@ -345,7 +346,7 @@ class Xena(ITrafficGenerator):
             j_file.set_header_vxlan_layer3(
                 src_ip='192.168.0.2',
                 dst_ip='192.168.240.9')
-
+            '''
             if self._params['traffic']['vlan']['enabled']:
                 j_file.set_header_vlan(
                     vlan_id=self._params['traffic']['vlan']['id'],
@@ -401,6 +402,8 @@ class Xena(ITrafficGenerator):
         self.xmanager.ports[1].reset_port()
         self.xmanager.ports[0].clear_stats()
         self.xmanager.ports[1].clear_stats()
+        self.xmanager.ports[0].set_port_ip('192.168.199.10','255.255.255.0', '192.168.199.1')
+        self.xmanager.ports[1].set_port_ip('192.168.199.11','255.255.255.0', '192.168.199.1')
 
         s1_p0 = self.xmanager.ports[0].add_stream()
         s1_p0.set_on()
@@ -571,7 +574,8 @@ class Xena(ITrafficGenerator):
         if traffic:
             self._params['traffic'] = merge_spec(self._params['traffic'],
                                                  traffic)
-
+        import pdb
+        pdb.set_trace()
         self._start_traffic_api(-1)
         return self._stop_api_traffic()
 
