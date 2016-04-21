@@ -31,8 +31,10 @@ TRAFFIC_DEFAULTS = {
 
     'l2': {
         'framesize': 64,
-        'srcmac': '00:00:00:00:00:00',
-        'dstmac': '00:00:00:00:00:00',
+        # 'srcmac': 'a0:36:9f:85:89:d8',
+        # 'dstmac': 'a0:36:9f:85:89:da',
+        'srcmac' : '04:f4:bc:2f:c8:c0',
+        'dstmac' : '04:f4:bc:2f:c8:c1',
     },
     'l3': {
         'proto': 'udp',
@@ -45,7 +47,7 @@ TRAFFIC_DEFAULTS = {
     },
     'vlan': {
         'enabled': False,
-        'id': 0,
+        'id': 5,
         'priority': 0,
         'cfi': 0,
     },

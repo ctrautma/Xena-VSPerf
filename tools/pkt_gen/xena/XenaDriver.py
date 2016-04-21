@@ -52,6 +52,7 @@ CMD_LOGIN = 'c_logon'
 CMD_LOGOFF = 'c_logoff'
 CMD_OWNER = 'c_owner'
 CMD_PORT = ';Port:'
+CMD_PORT_IP = 'p_ipaddress'
 CMD_RESERVE = 'p_reservation reserve'
 CMD_RELEASE = 'p_reservation release'
 CMD_RELINQUISH = 'p_reservation relinquish'
@@ -510,6 +511,19 @@ class XenaPort(object):
         :return: Boolean True is response OK, False if error.
         """
         command = make_port_command(CMD_RESET, self)
+        return self._manager.driver.ask_verify(command)
+
+    def set_port_ip(self, ip, subnet, gateway, wild='255'):
+        """
+        Set the port ip address of the specific port
+        :param ip: IP address to set to port
+        :param subnet: Subnet for port ip
+        :param gateway: Gateway ip for port
+        :param wild: wildcard used for ARP and PING replies
+        :return: Boolean True if response OK, False if error
+        """
+        command = make_port_command('{} {} {} {} 0.0.0.{}'.format(
+            CMD_PORT_IP, ip, subnet, gateway, wild), self)
         return self._manager.driver.ask_verify(command)
 
     def set_port_time_limit(self, micro_seconds):
@@ -1104,8 +1118,7 @@ if __name__ == '__main__':
     p=Ether(src='a0:36:9f:95:08:ac',dst='a0:36:9f:95:08:ae')/IP(src='192.168.0.1',dst='192.168.240.10')/UDP(sport=52800,dport=4789)/VXLAN(vni=99)/Ether(src='01:02:03:04:05:06',dst='06:05:04:03:02:01')/IP(src='192.168.0.10', dst='192.168.240.9')/UDP(sport=3000,dport=3001)
     #p=Ether(src='a0:36:9f:95:08:ac',dst='a0:36:9f:95:08:ae')/IP(src='192.168.0.1',dst='192.168.240.10')/GRE(key_present=1,key=900)/IP(src='192.168.0.10', dst='192.168.240.9')/UDP(sport=RandShort(),dport=3001)
     #p=Ether(src='a0:36:9f:95:08:ac',dst='a0:36:9f:95:08:ae')/IP(src='192.168.0.1',dst='192.168.240.10')/UDP(sport=52800,dport=6081)/GENEVE(vni=120)/Ether(src='01:02:03:04:05:06',dst='06:05:04:03:02:01')/IP(src='192.168.0.10', dst='192.168.240.9')/UDP(sport=RandShort(),dport=3001)
-
-    p.show() 
+    p.show()
     packet_bytes = bytes(p)
     packet_hex = '0x' + binascii.hexlify(packet_bytes).decode('utf-8')
     #P0S0.set_packet_header('0x525400c61020525400c61010080045000014000100004' +
