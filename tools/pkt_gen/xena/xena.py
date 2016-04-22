@@ -339,17 +339,16 @@ class Xena(ITrafficGenerator):
             j_file.set_header_layer4_udp(
                 source_port=self._params['traffic']['l4']['srcport'],
                 destination_port=self._params['traffic']['l4']['dstport'])
-            '''
-            #rita
-            #if self._params['traffic']['vxlan']['enabled']:
-            j_file.set_header_vxlan(vni=0)
-            j_file.set_header_vxlan_layer2(
-                dst_mac='02:00:00:00:00:02',
-                src_mac='02:00:00:00:00:01')
-            j_file.set_header_vxlan_layer3(
-                src_ip='192.168.0.2',
-                dst_ip='192.168.240.9')
-            '''
+            
+            if self._params['traffic']['tunnel_type'] == 'vxlan':
+                j_file.set_header_layer2(src_mac=settings.VXLAN_FRAME_L2['srcmac'],dst_mac=settings.VXLAN_FRAME_L2['dstmac'])
+                j_file.set_header_layer3(src_ip=settings.VXLAN_FRAME_L3['srcip'],dst_ip=settings.VXLAN_FRAME_L3['dstip'],protocol=settings.VXLAN_FRAME_L3['proto'])
+                j_file.set_header_layer4_udp(source_port=settings.VXLAN_FRAME_L4['srcport'],destination_port=settings.VXLAN_FRAME_L4['dstport'])
+                j_file.set_header_vxlan(vni=settings.VXLAN_FRAME_L4['vni'])
+                j_file.set_header_vxlan_layer2(src_mac=settings.VXLAN_FRAME_L4['inner_srcmac'],dst_mac=settings.VXLAN_FRAME_L4['inner_dstmac'])
+                j_file.set_header_vxlan_layer3(src_ip=settings.VXLAN_FRAME_L4['inner_srcip'],dst_ip=settings.VXLAN_FRAME_L4['inner_dstip'],protocol=settings.VXLAN_FRAME_L4['inner_proto'])
+                j_file.set_header_vxlan_layer4(source_port=settings.VXLAN_FRAME_L4['inner_srcport'],destination_port=settings.VXLAN_FRAME_L4['inner_dstport'])
+ 
             if self._params['traffic']['vlan']['enabled']:
                 j_file.set_header_vlan(
                     vlan_id=self._params['traffic']['vlan']['id'],

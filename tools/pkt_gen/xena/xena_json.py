@@ -31,6 +31,7 @@ import logging
 import uuid
 
 import scapy.layers.inet as inet
+from vxlan import VXLAN
 
 _LOGGER = logging.getLogger(__name__)
 _LOCALE = locale.getlocale()[1]
@@ -48,12 +49,15 @@ class XenaJSON(object):
         :return: XenaJSON object
         """
         self.json_data = read_json_file(json_path)
-
         self.packet_data = OrderedDict()
         self.packet_data['layer2'] = None
         self.packet_data['vlan'] = None
         self.packet_data['layer3'] = None
         self.packet_data['layer4'] = None
+        self.packet_data['vxlan'] = None
+        self.packet_data['vxlan_layer2'] = None
+        self.packet_data['vxlan_layer3'] = None
+        self.packet_data['vxlan_layer4'] = None
 
     def _add_multistream_layer(self, entity, seg_uuid, stop_value, layer):
         """
@@ -155,6 +159,8 @@ class XenaJSON(object):
             segment2.append(create_segment(
                 "VLAN", encode_byte_array(vlan).decode(_LOCALE)))
             header_pos += len(vlan)
+        
+        
         if self.packet_data['layer3']:
             # slice out the layer 3 bytes from the packet header byte array
             layer3 = packet[0][header_pos: len(
@@ -183,6 +189,7 @@ class XenaJSON(object):
                 "UDP", encode_byte_array(layer4).decode(_LOCALE))
             segment1.append(seg)
             if multistream_layer == 'L4' and flows > 0:
+                print("Layer 4")
                 self._add_multistream_layer(entity=0, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=4)
             # now do the other port data with reversed src, dst info
@@ -192,9 +199,71 @@ class XenaJSON(object):
                 "UDP", encode_byte_array(layer4).decode(_LOCALE))
             segment2.append(seg)
             if multistream_layer == 'L4' and flows > 0:
+                print("Layer 4")
                 self._add_multistream_layer(entity=1, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=4)
             header_pos += len(layer4)
+
+        if self.packet_data['vxlan']:
+            # slice out the vxlan bytes from the packet header byte array
+            vxlan = packet[0][header_pos: len(
+                self.packet_data['vxlan'][0]) + header_pos]
+            seg = create_segment(
+                "Raw", encode_byte_array(vxlan).decode(_LOCALE))
+            segment1.append(seg)
+
+             # now do the other port data with reversed src, dst info
+            vxlan = packet[0][header_pos: len(
+                self.packet_data['vxlan'][0]) + header_pos]
+            seg = create_segment(
+                "Raw", encode_byte_array(vxlan).decode(_LOCALE))
+            segment2.append(seg)
+            header_pos += len(vxlan)
+
+        if self.packet_data['vxlan_layer2']:
+            # slice out the vxlan_layer2 bytes from the packet header byte array
+            vxlan_layer2 = packet[0][header_pos: len(
+                self.packet_data['vxlan_layer2'][0]) + header_pos]
+            seg = create_segment(
+                "ETHERNET", encode_byte_array(vxlan_layer2).decode(_LOCALE))
+            segment1.append(seg)
+
+            # now do the other port data with reversed src, dst info
+            seg = create_segment(
+                "ETHERNET", encode_byte_array(vxlan_layer2).decode(_LOCALE))
+            segment2.append(seg)
+            header_pos += len(vxlan_layer2)
+
+        if self.packet_data['vxlan_layer3']:
+            # slice out the vxlan_layer3 bytes from the packet header byte array
+            vxlan_layer3 = packet[0][header_pos: len(
+                self.packet_data['vxlan_layer3'][0]) + header_pos]
+            seg = create_segment(
+                "IP", encode_byte_array(vxlan_layer3).decode(_LOCALE))
+            segment1.append(seg)
+            
+            # now do the other port data with reversed src, dst info
+            seg = create_segment(
+                "IP", encode_byte_array(vxlan_layer3).decode(_LOCALE))
+            
+            segment2.append(seg)
+            header_pos += len(vxlan_layer3)
+
+        if self.packet_data['vxlan_layer4']:
+            # slice out the vxlan_layer4 bytes from the packet header byte array
+            vxlan_layer4 = packet[0][header_pos: len(
+                self.packet_data['vxlan_layer4'][0]) + header_pos]
+            seg = create_segment(
+                "UDP", encode_byte_array(vxlan_layer4).decode(_LOCALE))
+            segment1.append(seg)
+
+            # now do the other port data with reversed src, dst info
+            seg = create_segment(
+                "UDP", encode_byte_array(vxlan_layer4).decode(_LOCALE))
+            
+            segment2.append(seg)
+            header_pos += len(vxlan_layer4)
+        
 
         self.json_data['StreamProfileHandler']['EntityList'][0][
             'StreamConfig']['HeaderSegments'] = segment1
@@ -245,7 +314,7 @@ class XenaJSON(object):
         self.json_data['ChassisManager']['ChassisList'][0][
             'Password'] = pwd
 
-    def set_header_layer2(self, dst_mac='cc:cc:cc:cc:cc:cc',
+    def set_header_layer2(self, dst_mac='aa:aa:aa:aa:aa:aa',
                           src_mac='bb:bb:bb:bb:bb:bb', **kwargs):
         """
         Build a scapy Ethernet L2 objects inside instance packet_data structure
@@ -294,7 +363,58 @@ class XenaJSON(object):
         self.packet_data['vlan'] = [
             inet.Dot1Q(vlan=vlan_id, **kwargs),
             inet.Dot1Q(vlan=vlan_id, **kwargs)]
+    
+    def set_header_vxlan(self, vni=0, **kwargs):
+        """
+        Build a vxlan scapy object inside instance packet_data structure
+        :param vxlan_id: The VXLAN ID
+        :param kwargs: Extra params per scapy usage
+        :return: None
+        """
+        self.packet_data['vxlan'] = [
+            VXLAN(vni=vni, **kwargs),
+            VXLAN(vni=vni, **kwargs)]
+        pass
 
+    def set_header_vxlan_layer2(self, dst_mac='cc:cc:cc:cc:cc:cc',
+                          src_mac='bb:bb:bb:bb:bb:bb', **kwargs):
+        """
+        Build a scapy Ethernet L2 objects inside instance packet_data structure
+        :param dst_mac: destination mac as string. Example "aa:aa:aa:aa:aa:aa"
+        :param src_mac: source mac as string. Example "bb:bb:bb:bb:bb:bb"
+        :param kwargs: Extra params per scapy usage.
+        :return: None
+        """
+        self.packet_data['vxlan_layer2'] = [
+            inet.Ether(dst=dst_mac, src=src_mac, **kwargs),
+            inet.Ether(dst=src_mac, src=dst_mac, **kwargs)]
+
+    def set_header_vxlan_layer3(self, src_ip='192.168.0.2', dst_ip='192.168.0.3',
+                          protocol='UDP', **kwargs):
+        """
+        Build scapy IPV4 L3 objects nside instance packet_data structure
+        :param src_ip: source IP as string in dot notation format
+        :param dst_ip: destination IP as string in dot notation format
+        :param protocol: protocol for l4
+        :param kwargs: Extra params per scapy usage
+        :return: None
+        """
+        self.packet_data['vxlan_layer3'] = [
+            inet.IP(src=src_ip, dst=dst_ip, proto=protocol.lower(), **kwargs),
+            inet.IP(src=dst_ip, dst=src_ip, proto=protocol.lower(), **kwargs)]
+    
+    def set_header_vxlan_layer4(self, source_port, destination_port, **kwargs):
+        """
+        Build scapy UDP L4 objects inside instance packet_data structure
+        :param source_port: Source port as int
+        :param destination_port: Destination port as int
+        :param kwargs: Extra params per scapy usage
+        :return: None
+        """
+        self.packet_data['vxlan_layer4'] = [
+            inet.UDP(sport=source_port, dport=destination_port, **kwargs),
+            inet.UDP(sport=source_port, dport=destination_port, **kwargs)]
+ 
     def set_port(self, index, module, port):
         """
         Set the module and port for the 0 index port to use with the test
@@ -509,17 +629,24 @@ if __name__ == "__main__":
     print("Running UnitTest for XenaJSON")
     JSON = XenaJSON()
     print_json_report(JSON.json_data)
-    JSON.set_chassis_info('10.19.15.55', 'vsperf')
-    JSON.set_port(0, 1, 0)
-    JSON.set_port(1, 1, 1)
-    JSON.set_header_layer2(dst_mac='ff:ff:ff:ff:ff:ff',
-                           src_mac='ee:ee:ee:ee:ee:ee')
-    JSON.set_header_vlan(vlan_id=5)
-    JSON.set_header_layer3(src_ip='192.168.100.2', dst_ip='192.168.100.3',
+    JSON.set_chassis_info('10.73.130.19', 'vsperf')
+    JSON.set_port(1, 3, 0)
+    JSON.set_port(1, 3, 1)
+    JSON.set_header_layer2(dst_mac='04:F4:BC:37:FC:C1',
+                           src_mac='04:F4:BC:37:FC:C0')
+    #JSON.set_header_vlan(vlan_id=0)
+    JSON.set_header_layer3(src_ip='192.168.199.10', dst_ip='192.168.199.11',
                            protocol='udp')
     JSON.set_header_layer4_udp(source_port=3000, destination_port=3001)
+
+    JSON.set_header_vxlan(vni=0)
+    JSON.set_header_vxlan_layer2(src_mac='a0:36:9f:95:08:ac',dst_mac='a0:36:9f:95:08:ae')
+    JSON.set_header_vxlan_layer3(src_ip='192.168.0.10',dst_ip='192.168.240.9',protocol='udp')
+    JSON.set_header_vxlan_layer4(source_port=3000,destination_port=3001)
+
     JSON.set_test_options(packet_sizes=[64], duration=10, iterations=1,
                           loss_rate=0.0, micro_tpld=True)
+    JSON.set_header_vxlan(vni=0)
     JSON.add_header_segments(flows=4000, multistream_layer='L4')
     JSON.set_topology_blocks()
     write_json_file(JSON.json_data, './testthis.x2544')
