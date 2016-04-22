@@ -220,8 +220,6 @@ class Xena(ITrafficGenerator):
         :param reverse: Swap source and destination info when building header
         :return: packet header in hex
         """
-        import pdb
-        pdb.set_trace()
         srcmac = self._params['traffic']['l2'][
             'srcmac'] if not reverse else self._params['traffic']['l2'][
             'dstmac']
@@ -243,63 +241,68 @@ class Xena(ITrafficGenerator):
                               id=self._params['traffic']['vlan']['cfi'])
             packet = layer2/vlan/layer3/layer4
 
-        elif ('tunnel_type' in self._params['traffic'] and self._params['traffic']['tunnel_type'] == 'vxlan'):
-            srcmac = settings.VXLAN_FRAME_L2['srcmac'] if not reverse else settings.VXLAN_FRAME_L2['dstmac']
-            dstmac = settings.VXLAN_FRAME_L2['dstmac'] if not reverse else settings.VXLAN_FRAME_L2['srcmac']
-            layer2 = inet.Ether(src=srcmac, dst=dstmac)
-            srcip = settings.VXLAN_FRAME_L3['srcip'] if not reverse else settings.VXLAN_FRAME_L3['dstip']
-            dstip = settings.VXLAN_FRAME_L3['dstip'] if not reverse else settings.VXLAN_FRAME_L3['srcip']
-            layer3 = inet.IP(src=srcip, dst=dstip,proto=settings.VXLAN_FRAME_L3['proto'])
-            layer4 = inet.UDP(sport=settings.VXLAN_FRAME_L4['srcport'],dport=settings.VXLAN_FRAME_L4['dstport'])
-            vxlan = VXLAN(vni=settings.VXLAN_FRAME_L4['vni'])
-            inner_srcmac = settings.VXLAN_FRAME_L4['inner_srcmac']
-            inner_dstmac = settings.VXLAN_FRAME_L4['inner_dstmac']
-            vxlan_layer2 = inet.Ether(src=inner_srcmac, dst=inner_dstmac)
-            inner_srcip = settings.VXLAN_FRAME_L4['inner_srcip']
-            inner_dstip = settings.VXLAN_FRAME_L4['inner_dstip']
-            vxlan_layer3 = inet.IP(src=inner_srcip, dst=inner_dstip,proto=settings.VXLAN_FRAME_L4['inner_proto'])
-            vxlan_layer4 = inet.UDP(sport=settings.VXLAN_FRAME_L4['inner_srcport'],dport=settings.VXLAN_FRAME_L4['inner_dstport'])
-            packet = layer2/layer3/layer4/vxlan/vxlan_layer2/vxlan_layer3/vxlan_layer4
+        elif  'tunnel_type' in self._params['traffic']:
+            if self._params['traffic']['tunnel_type'] == None:
+                packet = layer2/layer3/layer4
+            elif self._params['traffic']['tunnel_type'] == 'vxlan':
+                srcmac = settings.VXLAN_FRAME_L2['srcmac'] if not reverse else settings.VXLAN_FRAME_L2['dstmac']
+                dstmac = settings.VXLAN_FRAME_L2['dstmac'] if not reverse else settings.VXLAN_FRAME_L2['srcmac']
+                layer2 = inet.Ether(src=srcmac, dst=dstmac)
+                srcip = settings.VXLAN_FRAME_L3['srcip'] if not reverse else settings.VXLAN_FRAME_L3['dstip']
+                dstip = settings.VXLAN_FRAME_L3['dstip'] if not reverse else settings.VXLAN_FRAME_L3['srcip']
+                layer3 = inet.IP(src=srcip, dst=dstip,proto=settings.VXLAN_FRAME_L3['proto'])
+                layer4 = inet.UDP(sport=settings.VXLAN_FRAME_L4['srcport'],dport=settings.VXLAN_FRAME_L4['dstport'])
+                vxlan = VXLAN(vni=settings.VXLAN_FRAME_L4['vni'])
+                inner_srcmac = settings.VXLAN_FRAME_L4['inner_srcmac']
+                inner_dstmac = settings.VXLAN_FRAME_L4['inner_dstmac']
+                vxlan_layer2 = inet.Ether(src=inner_srcmac, dst=inner_dstmac)
+                inner_srcip = settings.VXLAN_FRAME_L4['inner_srcip']
+                inner_dstip = settings.VXLAN_FRAME_L4['inner_dstip']
+                vxlan_layer3 = inet.IP(src=inner_srcip, dst=inner_dstip,proto=settings.VXLAN_FRAME_L4['inner_proto'])
+                vxlan_layer4 = inet.UDP(sport=settings.VXLAN_FRAME_L4['inner_srcport'],dport=settings.VXLAN_FRAME_L4['inner_dstport'])
+                packet = layer2/layer3/layer4/vxlan/vxlan_layer2/vxlan_layer3/vxlan_layer4
  
-        elif ('tunnel_type' in self._params['traffic'] and self._params['traffic']['tunnel_type'] == 'geneve'):
-            srcmac = settings.GENEVE_FRAME_L2['srcmac'] if not reverse else settings.GENEVE_FRAME_L2['dstmac']
-            dstmac = settings.GENEVE_FRAME_L2['dstmac'] if not reverse else settings.GENEVE_FRAME_L2['srcmac']
-            layer2 = inet.Ether(src=srcmac, dst=dstmac)
-            srcip = settings.GENEVE_FRAME_L3['srcip'] if not reverse else settings.GENEVE_FRAME_L3['dstip']
-            dstip = settings.GENEVE_FRAME_L3['dstip'] if not reverse else settings.GENEVE_FRAME_L3['srcip']
-            layer3 = inet.IP(src=srcip, dst=dstip,proto=settings.GENEVE_FRAME_L3['proto'])
-            layer4 = inet.UDP(sport=settings.GENEVE_FRAME_L4['srcport'],dport=settings.GENEVE_FRAME_L4['dstport'])
-            geneve = GENEVE(vni=settings.GENEVE_FRAME_L4['geneve_vni'])
-            inner_srcmac = settings.GENEVE_FRAME_L4['inner_srcmac']
-            inner_dstmac = settings.GENEVE_FRAME_L4['inner_dstmac']
-            geneve_layer2 = inet.Ether(src=inner_srcmac, dst=inner_dstmac)
-            inner_srcip = settings.GENEVE_FRAME_L4['inner_srcip']
-            inner_dstip = settings.GENEVE_FRAME_L4['inner_dstip']
-            geneve_layer3 = inet.IP(src=inner_srcip, dst=inner_dstip,proto=settings.GENEVE_FRAME_L4['inner_proto'])
-            geneve_layer4 = inet.UDP(sport=settings.GENEVE_FRAME_L4['inner_srcport'],dport=settings.GENEVE_FRAME_L4['inner_dstport'])
-            packet = layer2/layer3/layer4/geneve/geneve_layer2/geneve_layer3/geneve_layer4
+            elif self._params['traffic']['tunnel_type'] == 'geneve':
+                srcmac = settings.GENEVE_FRAME_L2['srcmac'] if not reverse else settings.GENEVE_FRAME_L2['dstmac']
+                dstmac = settings.GENEVE_FRAME_L2['dstmac'] if not reverse else settings.GENEVE_FRAME_L2['srcmac']
+                layer2 = inet.Ether(src=srcmac, dst=dstmac)
+                srcip = settings.GENEVE_FRAME_L3['srcip'] if not reverse else settings.GENEVE_FRAME_L3['dstip']
+                dstip = settings.GENEVE_FRAME_L3['dstip'] if not reverse else settings.GENEVE_FRAME_L3['srcip']
+                layer3 = inet.IP(src=srcip, dst=dstip,proto=settings.GENEVE_FRAME_L3['proto'])
+                layer4 = inet.UDP(sport=settings.GENEVE_FRAME_L4['srcport'],dport=settings.GENEVE_FRAME_L4['dstport'])
+                geneve = GENEVE(vni=settings.GENEVE_FRAME_L4['geneve_vni'])
+                inner_srcmac = settings.GENEVE_FRAME_L4['inner_srcmac']
+                inner_dstmac = settings.GENEVE_FRAME_L4['inner_dstmac']
+                geneve_layer2 = inet.Ether(src=inner_srcmac, dst=inner_dstmac)
+                inner_srcip = settings.GENEVE_FRAME_L4['inner_srcip']
+                inner_dstip = settings.GENEVE_FRAME_L4['inner_dstip']
+                geneve_layer3 = inet.IP(src=inner_srcip, dst=inner_dstip,proto=settings.GENEVE_FRAME_L4['inner_proto'])
+                geneve_layer4 = inet.UDP(sport=settings.GENEVE_FRAME_L4['inner_srcport'],dport=settings.GENEVE_FRAME_L4['inner_dstport'])
+                packet = layer2/layer3/layer4/geneve/geneve_layer2/geneve_layer3/geneve_layer4
 
-        elif ('tunnel_type' in self._params['traffic'] and self._params['traffic']['tunnel_type'] == 'gre'):
-            srcmac = settings.GRE_FRAME_L2['srcmac'] if not reverse else settings.GRE_FRAME_L2['dstmac']
-            dstmac = settings.GRE_FRAME_L2['dstmac'] if not reverse else settings.GRE_FRAME_L2['srcmac']
-            layer2 = inet.Ether(src=srcmac, dst=dstmac)
-            srcip = settings.GRE_FRAME_L3['srcip'] if not reverse else settings.GRE_FRAME_L3['dstip']
-            dstip = settings.GRE_FRAME_L3['dstip'] if not reverse else settings.GRE_FRAME_L3['srcip']
-            layer3 = inet.IP(src=srcip, dst=dstip,proto=settings.GRE_FRAME_L3['proto'])
-            #layer4 = inet.UDP(sport=settings.GRE_FRAME_L4['srcport'],dport=settings.GRE_FRAME_L4['dstport'])
-            gre = GRE(key_present=settings.GRE_FRAME_L4['key_present'],key=settings.GRE_FRAME_L4['key'])
-            #inner_srcmac = settings.GRE_FRAME_L4['inner_srcmac']
-            #inner_dstmac = settings.GRE_FRAME_L4['inner_dstmac']
-            #gre_layer2 = inet.Ether(src=inner_srcmac, dst=inner_dstmac)
-            inner_srcip = settings.GRE_FRAME_L4['inner_srcip']
-            inner_dstip = settings.GRE_FRAME_L4['inner_dstip']
-            gre_layer3 = inet.IP(src=inner_srcip, dst=inner_dstip,proto=settings.GRE_FRAME_L4['inner_proto'])
-            gre_layer4 = inet.UDP(sport=settings.GRE_FRAME_L4['inner_srcport'],dport=settings.GRE_FRAME_L4['inner_dstport'])
-            packet = layer2/layer3/gre/gre_layer3/gre_layer4
+            elif self._params['traffic']['tunnel_type'] == 'gre':
+                srcmac = settings.GRE_FRAME_L2['srcmac'] if not reverse else settings.GRE_FRAME_L2['dstmac']
+                dstmac = settings.GRE_FRAME_L2['dstmac'] if not reverse else settings.GRE_FRAME_L2['srcmac']
+                layer2 = inet.Ether(src=srcmac, dst=dstmac)
+                srcip = settings.GRE_FRAME_L3['srcip'] if not reverse else settings.GRE_FRAME_L3['dstip']
+                dstip = settings.GRE_FRAME_L3['dstip'] if not reverse else settings.GRE_FRAME_L3['srcip']
+                layer3 = inet.IP(src=srcip, dst=dstip,proto=settings.GRE_FRAME_L3['proto'])
+                #layer4 = inet.UDP(sport=settings.GRE_FRAME_L4['srcport'],dport=settings.GRE_FRAME_L4['dstport'])
+                gre = GRE(key_present=settings.GRE_FRAME_L4['key_present'],key=settings.GRE_FRAME_L4['key'])
+                #inner_srcmac = settings.GRE_FRAME_L4['inner_srcmac']
+                #inner_dstmac = settings.GRE_FRAME_L4['inner_dstmac']
+                #gre_layer2 = inet.Ether(src=inner_srcmac, dst=inner_dstmac)
+                inner_srcip = settings.GRE_FRAME_L4['inner_srcip']
+                inner_dstip = settings.GRE_FRAME_L4['inner_dstip']
+                gre_layer3 = inet.IP(src=inner_srcip, dst=inner_dstip,proto=settings.GRE_FRAME_L4['inner_proto'])
+                gre_layer4 = inet.UDP(sport=settings.GRE_FRAME_L4['inner_srcport'],dport=settings.GRE_FRAME_L4['inner_dstport'])
+                packet = layer2/layer3/gre/gre_layer3/gre_layer4
 
+            else:
+                 raise ValueError('Unknown tunnel type ', self._params['traffic']['tunnel_type']) 
         else:
             packet = layer2/layer3/layer4
-             
+     
         packet_bytes = bytes(packet)
         packet_hex = '0x' + binascii.hexlify(packet_bytes).decode('utf-8')
         return packet_hex
@@ -574,8 +577,6 @@ class Xena(ITrafficGenerator):
         if traffic:
             self._params['traffic'] = merge_spec(self._params['traffic'],
                                                  traffic)
-        import pdb
-        pdb.set_trace()
         self._start_traffic_api(-1)
         return self._stop_api_traffic()
 
