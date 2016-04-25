@@ -329,34 +329,50 @@ class Xena(ITrafficGenerator):
             elif testtype == '2544_b2b':
                 j_file.enable_back2back_test()
 
-            j_file.set_header_layer2(
-                dst_mac=self._params['traffic']['l2']['dstmac'],
-                src_mac=self._params['traffic']['l2']['srcmac'])
-            j_file.set_header_layer3(
-                src_ip=self._params['traffic']['l3']['srcip'],
-                dst_ip=self._params['traffic']['l3']['dstip'],
-                protocol=self._params['traffic']['l3']['proto'])
-            j_file.set_header_layer4_udp(
-                source_port=self._params['traffic']['l4']['srcport'],
-                destination_port=self._params['traffic']['l4']['dstport'])
-            
-            if self._params['traffic']['tunnel_type'] == 'vxlan':
-                j_file.set_header_layer2(src_mac=settings.VXLAN_FRAME_L2['srcmac'],dst_mac=settings.VXLAN_FRAME_L2['dstmac'])
-                j_file.set_header_layer3(src_ip=settings.VXLAN_FRAME_L3['srcip'],dst_ip=settings.VXLAN_FRAME_L3['dstip'],protocol=settings.VXLAN_FRAME_L3['proto'])
-                j_file.set_header_layer4_udp(source_port=settings.VXLAN_FRAME_L4['srcport'],destination_port=settings.VXLAN_FRAME_L4['dstport'])
-                j_file.set_header_vxlan(vni=settings.VXLAN_FRAME_L4['vni'])
-                j_file.set_header_vxlan_layer2(src_mac=settings.VXLAN_FRAME_L4['inner_srcmac'],dst_mac=settings.VXLAN_FRAME_L4['inner_dstmac'])
-                j_file.set_header_vxlan_layer3(src_ip=settings.VXLAN_FRAME_L4['inner_srcip'],dst_ip=settings.VXLAN_FRAME_L4['inner_dstip'],protocol=settings.VXLAN_FRAME_L4['inner_proto'])
-                j_file.set_header_vxlan_layer4(source_port=settings.VXLAN_FRAME_L4['inner_srcport'],destination_port=settings.VXLAN_FRAME_L4['inner_dstport'])
- 
+
             if self._params['traffic']['vlan']['enabled']:
-                j_file.set_header_vlan(
-                    vlan_id=self._params['traffic']['vlan']['id'],
-                    id=self._params['traffic']['vlan']['cfi'],
-                    prio=self._params['traffic']['vlan']['priority'])
-            j_file.add_header_segments(
-                flows=self._params['traffic']['multistream'],
-                multistream_layer=self._params['traffic']['stream_type'])
+                j_file.set_header_vlan(vlan_id=self._params['traffic']['vlan']['id'],id=self._params['traffic']['vlan']['cfi'],prio=self._params['traffic']['vlan']['priority'])
+
+            if 'tunnel_type' in self._params['traffic']:
+                if self._params['traffic']['tunnel_type'] == None:
+                    j_file.set_header_layer2(dst_mac=self._params['traffic']['l2']['dstmac'],src_mac=self._params['traffic']['l2']['srcmac'])
+                    j_file.set_header_layer3(src_ip=self._params['traffic']['l3']['srcip'],dst_ip=self._params['traffic']['l3']['dstip'],protocol=self._params['traffic']['l3']['proto'])
+                    j_file.set_header_layer4_udp(source_port=self._params['traffic']['l4']['srcport'],destination_port=self._params['traffic']['l4']['dstport'])
+
+                elif self._params['traffic']['tunnel_type'] == 'vxlan':
+                    j_file.set_header_layer2(src_mac=settings.VXLAN_FRAME_L2['srcmac'],dst_mac=settings.VXLAN_FRAME_L2['dstmac'])
+                    j_file.set_header_layer3(src_ip=settings.VXLAN_FRAME_L3['srcip'],dst_ip=settings.VXLAN_FRAME_L3['dstip'],protocol=settings.VXLAN_FRAME_L3['proto'])
+                    j_file.set_header_layer4_udp(source_port=settings.VXLAN_FRAME_L4['srcport'],destination_port=settings.VXLAN_FRAME_L4['dstport'])
+                    j_file.set_header_vxlan(vni=settings.VXLAN_FRAME_L4['vni'])
+                    j_file.set_header_vxlan_layer2(src_mac=settings.VXLAN_FRAME_L4['inner_srcmac'],dst_mac=settings.VXLAN_FRAME_L4['inner_dstmac'])
+                    j_file.set_header_vxlan_layer3(src_ip=settings.VXLAN_FRAME_L4['inner_srcip'],dst_ip=settings.VXLAN_FRAME_L4['inner_dstip'],protocol=settings.VXLAN_FRAME_L4['inner_proto'])
+                    j_file.set_header_vxlan_layer4(source_port=settings.VXLAN_FRAME_L4['inner_srcport'],destination_port=settings.VXLAN_FRAME_L4['inner_dstport'])
+
+                elif self._params['traffic']['tunnel_type'] == 'geneve':
+                    j_file.set_header_layer2(src_mac=settings.GENEVE_FRAME_L2['srcmac'],dst_mac=settings.GENEVE_FRAME_L2['dstmac'])
+                    j_file.set_header_layer3(src_ip=settings.GENEVE_FRAME_L3['srcip'],dst_ip=settings.GENEVE_FRAME_L3['dstip'],protocol=settings.GENEVE_FRAME_L3['proto'])
+                    j_file.set_header_layer4_udp(source_port=settings.GENEVE_FRAME_L4['srcport'],destination_port=settings.GENEVE_FRAME_L4['dstport'])
+                    j_file.set_header_geneve(vni=settings.GENEVE_FRAME_L4['geneve_vni'])
+                    j_file.set_header_geneve_layer2(src_mac=settings.GENEVE_FRAME_L4['inner_srcmac'],dst_mac=settings.GENEVE_FRAME_L4['inner_dstmac'])
+                    j_file.set_header_geneve_layer3(src_ip=settings.GENEVE_FRAME_L4['inner_srcip'],dst_ip=settings.GENEVE_FRAME_L4['inner_dstip'],protocol=settings.GENEVE_FRAME_L4['inner_proto'])
+                    j_file.set_header_geneve_layer4(source_port=settings.GENEVE_FRAME_L4['inner_srcport'],destination_port=settings.GENEVE_FRAME_L4['inner_dstport'])
+                
+                elif self._params['traffic']['tunnel_type'] == 'gre':
+                    j_file.set_header_layer2(src_mac=settings.GRE_FRAME_L2['srcmac'],dst_mac=settings.GRE_FRAME_L2['dstmac'])
+                    j_file.set_header_layer3(src_ip=settings.GRE_FRAME_L3['srcip'],dst_ip=settings.GRE_FRAME_L3['dstip'],protocol=settings.GRE_FRAME_L3['proto'])
+                    j_file.set_header_gre(key_present=settings.GRE_FRAME_L4['key_present'],key=settings.GRE_FRAME_L4['key'])
+                    j_file.set_header_gre_layer3(src_ip=settings.GRE_FRAME_L4['inner_srcip'],dst_ip=settings.GRE_FRAME_L4['inner_dstip'],protocol=settings.GRE_FRAME_L4['inner_proto'])
+                    j_file.set_header_gre_layer4(source_port=settings.GRE_FRAME_L4['inner_srcport'],destination_port=settings.GRE_FRAME_L4['inner_dstport'])
+
+                else:
+                    raise ValueError('Unknown tunnel type ', self._params['traffic']['tunnel_type'])
+            else:
+                j_file.set_header_layer2(dst_mac=self._params['traffic']['l2']['dstmac'],src_mac=self._params['traffic']['l2']['srcmac'])
+                j_file.set_header_layer3(src_ip=self._params['traffic']['l3']['srcip'],dst_ip=self._params['traffic']['l3']['dstip'],protocol=self._params['traffic']['l3']['proto'])
+                j_file.set_header_layer4_udp(source_port=self._params['traffic']['l4']['srcport'],destination_port=self._params['traffic']['l4']['dstport'])
+            
+            j_file.add_header_segments(flows=self._params['traffic']['multistream'],multistream_layer=self._params['traffic']['stream_type'])
+
             # set duplex mode
             if self._params['traffic']['bidir']:
                 j_file.set_topology_mesh()
