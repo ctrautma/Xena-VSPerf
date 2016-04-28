@@ -29,6 +29,7 @@ from tools.pkt_gen.trafficgen.trafficgenhelper import (
     TRAFFIC_DEFAULTS,
     merge_spec)
 from tools.pkt_gen.trafficgen.trafficgen import ITrafficGenerator
+from scapy.all import *
 
 # python imports
 import binascii
@@ -310,6 +311,7 @@ class Xena(ITrafficGenerator):
             return layer2/vlan/layer3/gre/gre_layer3/gre_layer4
         else:
             return layer2/layer3/gre/gre_layer3/gre_layer4
+            #return layer2/layer3/gre/fuzz(Ether(dst="00:00:00:00:00:03")/IP(dst="10.0.0.2")/TCP()/Raw(load="this is an encapsulation test"))
    
     def _build_vlan_header(self):
         """
@@ -351,12 +353,14 @@ class Xena(ITrafficGenerator):
                     packet = layer2/vlan/layer3/layer4
                 else:
                     packet = layer2/layer3/layer4
-            elif self._params['traffic']['tunnel_type'] == 'vxlan':
+            elif self._params['traffic']['tunnel_type'] == 'vxlan' and self._params['traffic']['tunnel_method']['decap'] == True:
                 packet = self._build_vxlan_header(reverse) 
-            elif self._params['traffic']['tunnel_type'] == 'geneve':
+            elif self._params['traffic']['tunnel_type'] == 'geneve'and self._params['traffic']['tunnel_method']['decap'] == True:
                 packet = self._build_geneve_header(reverse)
-            elif self._params['traffic']['tunnel_type'] == 'gre':
+            elif self._params['traffic']['tunnel_type'] == 'gre'and self._params['traffic']['tunnel_method']['decap'] == True:
                 packet = self._build_gre_header(reverse) 
+            elif self._params['traffic']['tunnel_type'] in ['vxlan','geneve','gre'] and self._params['traffic']['tunnel_method']['encap'] == True:
+                packet = layer2/layer3/layer4
             else:
                 raise ValueError('Unknown tunnel type ', self._params['traffic']['tunnel_type']) 
         else:
@@ -402,7 +406,7 @@ class Xena(ITrafficGenerator):
                     j_file.set_header_layer3(src_ip=self._params['traffic']['l3']['srcip'],dst_ip=self._params['traffic']['l3']['dstip'],protocol=self._params['traffic']['l3']['proto'])
                     j_file.set_header_layer4_udp(source_port=self._params['traffic']['l4']['srcport'],destination_port=self._params['traffic']['l4']['dstport'])
 
-                elif self._params['traffic']['tunnel_type'] == 'vxlan':
+                elif self._params['traffic']['tunnel_type'] == 'vxlan' and self._params['traffic']['tunnel_method']['decap'] == True:
                     j_file.set_header_layer2(src_mac=settings.VXLAN_FRAME_L2['srcmac'],dst_mac=settings.VXLAN_FRAME_L2['dstmac'])
                     j_file.set_header_layer3(src_ip=settings.VXLAN_FRAME_L3['srcip'],dst_ip=settings.VXLAN_FRAME_L3['dstip'],protocol=settings.VXLAN_FRAME_L3['proto'])
                     j_file.set_header_layer4_udp(source_port=settings.VXLAN_FRAME_L4['srcport'],destination_port=settings.VXLAN_FRAME_L4['dstport'])
@@ -411,7 +415,7 @@ class Xena(ITrafficGenerator):
                     j_file.set_header_vxlan_layer3(src_ip=settings.VXLAN_FRAME_L4['inner_srcip'],dst_ip=settings.VXLAN_FRAME_L4['inner_dstip'],protocol=settings.VXLAN_FRAME_L4['inner_proto'])
                     j_file.set_header_vxlan_layer4(source_port=settings.VXLAN_FRAME_L4['inner_srcport'],destination_port=settings.VXLAN_FRAME_L4['inner_dstport'])
 
-                elif self._params['traffic']['tunnel_type'] == 'geneve':
+                elif self._params['traffic']['tunnel_type'] == 'geneve' and self._params['traffic']['tunnel_method']['decap'] == True:
                     j_file.set_header_layer2(src_mac=settings.GENEVE_FRAME_L2['srcmac'],dst_mac=settings.GENEVE_FRAME_L2['dstmac'])
                     j_file.set_header_layer3(src_ip=settings.GENEVE_FRAME_L3['srcip'],dst_ip=settings.GENEVE_FRAME_L3['dstip'],protocol=settings.GENEVE_FRAME_L3['proto'])
                     j_file.set_header_layer4_udp(source_port=settings.GENEVE_FRAME_L4['srcport'],destination_port=settings.GENEVE_FRAME_L4['dstport'])
@@ -420,12 +424,17 @@ class Xena(ITrafficGenerator):
                     j_file.set_header_geneve_layer3(src_ip=settings.GENEVE_FRAME_L4['inner_srcip'],dst_ip=settings.GENEVE_FRAME_L4['inner_dstip'],protocol=settings.GENEVE_FRAME_L4['inner_proto'])
                     j_file.set_header_geneve_layer4(source_port=settings.GENEVE_FRAME_L4['inner_srcport'],destination_port=settings.GENEVE_FRAME_L4['inner_dstport'])
                 
-                elif self._params['traffic']['tunnel_type'] == 'gre':
+                elif self._params['traffic']['tunnel_type'] == 'gre' and self._params['traffic']['tunnel_method']['decap'] == True:
                     j_file.set_header_layer2(src_mac=settings.GRE_FRAME_L2['srcmac'],dst_mac=settings.GRE_FRAME_L2['dstmac'])
                     j_file.set_header_layer3(src_ip=settings.GRE_FRAME_L3['srcip'],dst_ip=settings.GRE_FRAME_L3['dstip'],protocol=settings.GRE_FRAME_L3['proto'])
                     j_file.set_header_gre(key_present=settings.GRE_FRAME_L4['key_present'],key=settings.GRE_FRAME_L4['key'])
                     j_file.set_header_gre_layer3(src_ip=settings.GRE_FRAME_L4['inner_srcip'],dst_ip=settings.GRE_FRAME_L4['inner_dstip'],protocol=settings.GRE_FRAME_L4['inner_proto'])
                     j_file.set_header_gre_layer4(source_port=settings.GRE_FRAME_L4['inner_srcport'],destination_port=settings.GRE_FRAME_L4['inner_dstport'])
+                
+                elif self._params['traffic']['tunnel_type'] in ['vxlan','geneve','gre'] and self._params['traffic']['tunnel_method']['encap'] == True:
+                    j_file.set_header_layer2(dst_mac=self._params['traffic']['l2']['dstmac'],src_mac=self._params['traffic']['l2']['srcmac'])
+                    j_file.set_header_layer3(src_ip=self._params['traffic']['l3']['srcip'],dst_ip=self._params['traffic']['l3']['dstip'],protocol=self._params['traffic']['l3']['proto'])
+                    j_file.set_header_layer4_udp(source_port=self._params['traffic']['l4']['srcport'],destination_port=self._params['traffic']['l4']['dstport'])
 
                 else:
                     raise ValueError('Unknown tunnel type ', self._params['traffic']['tunnel_type'])
