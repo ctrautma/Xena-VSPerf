@@ -353,13 +353,13 @@ class Xena(ITrafficGenerator):
                     packet = layer2/vlan/layer3/layer4
                 else:
                     packet = layer2/layer3/layer4
-            elif self._params['traffic']['tunnel_type'] == 'vxlan' and self._params['traffic']['tunnel_method']['decap'] == True:
+            elif self._params['traffic']['tunnel_type'] == 'vxlan' and 'decap' in settings.getValue('EXACT_TEST_NAME')[0]:
                 packet = self._build_vxlan_header(reverse) 
-            elif self._params['traffic']['tunnel_type'] == 'geneve'and self._params['traffic']['tunnel_method']['decap'] == True:
+            elif self._params['traffic']['tunnel_type'] == 'geneve'and 'decap' in settings.getValue('EXACT_TEST_NAME')[0]:
                 packet = self._build_geneve_header(reverse)
-            elif self._params['traffic']['tunnel_type'] == 'gre'and self._params['traffic']['tunnel_method']['decap'] == True:
+            elif self._params['traffic']['tunnel_type'] == 'gre'and 'decap' in settings.getValue('EXACT_TEST_NAME')[0]:
                 packet = self._build_gre_header(reverse) 
-            elif self._params['traffic']['tunnel_type'] in ['vxlan','geneve','gre'] and self._params['traffic']['tunnel_method']['encap'] == True:
+            elif self._params['traffic']['tunnel_type'] in ['vxlan','geneve','gre']:
                 packet = layer2/layer3/layer4
             else:
                 raise ValueError('Unknown tunnel type ', self._params['traffic']['tunnel_type']) 
