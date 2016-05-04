@@ -77,7 +77,7 @@ GRE_FRAME_L2 = {'srcmac': '01:02:03:04:05:06',
                 'dstmac': 'a0:36:9f:95:08:ac',
                }
 
-GRE_FRAME_L3 = {'proto': 'udp',
+GRE_FRAME_L3 = {'proto': 'gre',
                 'packetsize': 512,
                 'srcip': '172.16.1.2',
                 'dstip': '172.16.1.1',
