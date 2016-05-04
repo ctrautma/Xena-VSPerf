@@ -216,189 +216,50 @@ class XenaJSON(object):
                 self._add_multistream_layer(entity=1, seg_uuid=seg['ItemID'],
                                             stop_value=flows, layer=4)
             header_pos += len(layer4)
-
-        if self.packet_data['vxlan']:
-            # slice out the vxlan bytes from the packet header byte array
-            vxlan = packet[0][header_pos: len(
-                self.packet_data['vxlan'][0]) + header_pos]
-            seg = create_segment(
-                "Raw", encode_byte_array(vxlan).decode(_LOCALE))
-            segment1.append(seg)
-
-             # now do the other port data with reversed src, dst info
-            vxlan = packet[1][header_pos: len(
-                self.packet_data['vxlan'][1]) + header_pos]
-            seg = create_segment(
-                "Raw", encode_byte_array(vxlan).decode(_LOCALE))
-            segment2.append(seg)
-            header_pos += len(vxlan)
-
-        if self.packet_data['vxlan_layer2']:
-            # slice out the vxlan_layer2 bytes from the packet header byte array
-            vxlan_layer2 = packet[0][header_pos: len(
-                self.packet_data['vxlan_layer2'][0]) + header_pos]
-            seg = create_segment(
-                "ETHERNET", encode_byte_array(vxlan_layer2).decode(_LOCALE))
-            segment1.append(seg)
-
-            # now do the other port data with reversed src, dst info
-            vxlan_layer2 = packet[1][header_pos: len(
-                self.packet_data['vxlan_layer2'][1]) + header_pos]
-            seg = create_segment(
-                "ETHERNET", encode_byte_array(vxlan_layer2).decode(_LOCALE))
-            segment2.append(seg)
-            header_pos += len(vxlan_layer2)
-
-        if self.packet_data['vxlan_layer3']:
-            # slice out the vxlan_layer3 bytes from the packet header byte array
-            vxlan_layer3 = packet[0][header_pos: len(
-                self.packet_data['vxlan_layer3'][0]) + header_pos]
-            seg = create_segment(
-                "IP", encode_byte_array(vxlan_layer3).decode(_LOCALE))
-            segment1.append(seg)
-            
-            # now do the other port data with reversed src, dst info
-            vxlan_layer3 = packet[1][header_pos: len(
-                self.packet_data['vxlan_layer3'][1]) + header_pos]
-            seg = create_segment(
-                "IP", encode_byte_array(vxlan_layer3).decode(_LOCALE))
-            
-            segment2.append(seg)
-            header_pos += len(vxlan_layer3)
-
-        if self.packet_data['vxlan_layer4']:
-            # slice out the vxlan_layer4 bytes from the packet header byte array
-            vxlan_layer4 = packet[0][header_pos: len(
-                self.packet_data['vxlan_layer4'][0]) + header_pos]
-            seg = create_segment(
-                "UDP", encode_byte_array(vxlan_layer4).decode(_LOCALE))
-            segment1.append(seg)
-
-            # now do the other port data with reversed src, dst info
-            vxlan_layer4 = packet[1][header_pos: len(
-                self.packet_data['vxlan_layer4'][1]) + header_pos]
-            seg = create_segment(
-                "UDP", encode_byte_array(vxlan_layer4).decode(_LOCALE))
-            
-            segment2.append(seg)
-            header_pos += len(vxlan_layer4)
         
+        def add_segment(packet_type, segment_key):
+            # slice out the vxlan bytes from the packet header byte array
+            nonlocal segment1, segment2, packet, header_pos
+            data = packet[0][header_pos: len(
+                self.packet_data[packet_type][0]) + header_pos]
+            seg = create_segment(
+                segment_key, encode_byte_array(data).decode(_LOCALE))
+            segment1.append(seg)
+
+            # now do the other port data with reversed src, dst info
+            data = packet[1][header_pos: len(
+                self.packet_data[packet_type][1]) + header_pos]
+            seg = create_segment(
+                segment_key, encode_byte_array(data).decode(_LOCALE))
+            segment2.append(seg)
+            header_pos += len(data)     
+        
+        if self.packet_data['vxlan']:
+            add_segment('vxlan', "Raw")
+        if self.packet_data['vxlan_layer2']:
+            add_segment('vxlan_layer2', "ETHERNET")
+        if self.packet_data['vxlan_layer3']:
+            add_segment('vxlan_layer3', "IP")
+        if self.packet_data['vxlan_layer4']:
+            add_segment('vxlan_layer4', "UDP")
         if self.packet_data['geneve']:
-            # slice out the vxlan bytes from the packet header byte array
-            geneve = packet[0][header_pos: len(
-                self.packet_data['geneve'][0]) + header_pos]
-            seg = create_segment(
-                "Raw", encode_byte_array(geneve).decode(_LOCALE))
-            segment1.append(seg)
-
-             # now do the other port data with reversed src, dst info
-            geneve = packet[1][header_pos: len(
-                self.packet_data['geneve'][1]) + header_pos]
-            seg = create_segment(
-                "Raw", encode_byte_array(geneve).decode(_LOCALE))
-            segment2.append(seg)
-            header_pos += len(geneve)
-
+            add_segment('geneve', "Raw")
         if self.packet_data['geneve_layer2']:
-            # slice out the vxlan_layer2 bytes from the packet header byte array
-            geneve_layer2 = packet[0][header_pos: len(
-                self.packet_data['geneve_layer2'][0]) + header_pos]
-            seg = create_segment(
-                "ETHERNET", encode_byte_array(geneve_layer2).decode(_LOCALE))
-            segment1.append(seg)
-
-            # now do the other port data with reversed src, dst info
-            geneve_layer2 = packet[1][header_pos: len(
-                self.packet_data['geneve_layer2'][1]) + header_pos]
-            seg = create_segment(
-                "ETHERNET", encode_byte_array(geneve_layer2).decode(_LOCALE))
-            segment2.append(seg)
-            header_pos += len(geneve_layer2)
-
+            add_segment('geneve_layer2', "ETHERNET")
         if self.packet_data['geneve_layer3']:
-            # slice out the vxlan_layer3 bytes from the packet header byte array
-            geneve_layer3 = packet[0][header_pos: len(
-                self.packet_data['geneve_layer3'][0]) + header_pos]
-            seg = create_segment(
-                "IP", encode_byte_array(geneve_layer3).decode(_LOCALE))
-            segment1.append(seg)
-
-            # now do the other port data with reversed src, dst info
-            geneve_layer3 = packet[1][header_pos: len(
-                self.packet_data['geneve_layer3'][1]) + header_pos]
-            seg = create_segment(
-                "IP", encode_byte_array(geneve_layer3).decode(_LOCALE))
-
-            segment2.append(seg)
-            header_pos += len(geneve_layer3)
-  
+            add_segment('geneve_layer3', "IP")
         if self.packet_data['geneve_layer4']:
-            # slice out the vxlan_layer4 bytes from the packet header byte array
-            geneve_layer4 = packet[0][header_pos: len(
-                self.packet_data['geneve_layer4'][0]) + header_pos]
-            seg = create_segment(
-                "UDP", encode_byte_array(geneve_layer4).decode(_LOCALE))
-            segment1.append(seg)
+            add_segment('geneve_layer4', "UDP")
 
-            # now do the other port data with reversed src, dst info
-            geneve_layer4 = packet[1][header_pos: len(
-                self.packet_data['geneve_layer4'][1]) + header_pos]
-            seg = create_segment(
-                "UDP", encode_byte_array(geneve_layer4).decode(_LOCALE))
-
-            segment2.append(seg)
-            header_pos += len(geneve_layer4)
-  
         if self.packet_data['gre']:
-            # slice out the vxlan bytes from the packet header byte array
-            gre = packet[0][header_pos: len(
-                self.packet_data['gre'][0]) + header_pos]
-            seg = create_segment(
-                "Raw", encode_byte_array(gre).decode(_LOCALE))
-            segment1.append(seg)
-
-             # now do the other port data with reversed src, dst info
-            gre = packet[1][header_pos: len(
-                self.packet_data['gre'][1]) + header_pos]
-            seg = create_segment(
-                "Raw", encode_byte_array(gre).decode(_LOCALE))
-            segment2.append(seg)
-            header_pos += len(gre)
-  
+            add_segment('gre', "Raw")
+        if self.packet_data['gre_layer2']:
+            add_segment('gre_layer2', "ETHERNET")
         if self.packet_data['gre_layer3']:
-            # slice out the vxlan_layer3 bytes from the packet header byte array
-            gre_layer3 = packet[0][header_pos: len(
-                self.packet_data['gre_layer3'][0]) + header_pos]
-            seg = create_segment(
-                "IP", encode_byte_array(gre_layer3).decode(_LOCALE))
-            segment1.append(seg)
-
-            # now do the other port data with reversed src, dst info
-            gre_layer3 = packet[1][header_pos: len(
-                self.packet_data['gre_layer3'][1]) + header_pos]
-            seg = create_segment(
-                "IP", encode_byte_array(gre_layer3).decode(_LOCALE))
-
-            segment2.append(seg)
-            header_pos += len(gre_layer3)
-
+            add_segment('gre_layer3', "IP")
         if self.packet_data['gre_layer4']:
-            # slice out the vxlan_layer4 bytes from the packet header byte array
-            gre_layer4 = packet[0][header_pos: len(
-                self.packet_data['gre_layer4'][0]) + header_pos]
-            seg = create_segment(
-                "UDP", encode_byte_array(gre_layer4).decode(_LOCALE))
-            segment1.append(seg)
-
-            # now do the other port data with reversed src, dst info
-            gre_layer4 = packet[1][header_pos: len(
-                self.packet_data['gre_layer4'][1]) + header_pos]
-            seg = create_segment(
-                "UDP", encode_byte_array(gre_layer4).decode(_LOCALE))
-
-            segment2.append(seg)
-            header_pos += len(gre_layer4)
-
+            add_segment('gre_layer4', "UDP")
+  
         self.json_data['StreamProfileHandler']['EntityList'][0][
             'StreamConfig']['HeaderSegments'] = segment1
         self.json_data['StreamProfileHandler']['EntityList'][1][
@@ -508,7 +369,6 @@ class XenaJSON(object):
         self.packet_data['vxlan'] = [
             VXLAN(vni=vni, **kwargs),
             VXLAN(vni=vni, **kwargs)]
-        pass
 
     def set_header_vxlan_layer2(self, dst_mac='cc:cc:cc:cc:cc:cc',
                           src_mac='bb:bb:bb:bb:bb:bb', **kwargs):
@@ -608,10 +468,22 @@ class XenaJSON(object):
         :return: None
         """
         self.packet_data['gre'] = [
-            GRE(key_present=key_present,key=key, **kwargs),
-            GRE(key_present=key_present,key=key, **kwargs)]
-        pass
-    
+            GRE(**kwargs),
+            GRE(**kwargs)]
+   
+    def set_header_gre_layer2(self, dst_mac='cc:cc:cc:cc:cc:cc',
+                          src_mac='bb:bb:bb:bb:bb:bb', **kwargs):
+        """
+        Build a scapy Ethernet L2 objects inside instance packet_data structure
+        :param dst_mac: destination mac as string. Example "aa:aa:aa:aa:aa:aa"
+        :param src_mac: source mac as string. Example "bb:bb:bb:bb:bb:bb"
+        :param kwargs: Extra params per scapy usage.
+        :return: None
+        """
+        self.packet_data['gre_layer2'] = [
+            inet.Ether(dst=dst_mac, src=src_mac, **kwargs),
+            inet.Ether(dst=src_mac, src=dst_mac, **kwargs)]    
+ 
     def set_header_gre_layer3(self, src_ip='192.168.0.2', dst_ip='192.168.0.3',
                           protocol='UDP', **kwargs):
         """
