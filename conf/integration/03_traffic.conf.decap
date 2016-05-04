@@ -1,0 +1,125 @@
+# Copyright 2015-2016 Intel Corporation.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# For OP2P deployment scenario
+TRAFFICGEN_PORT1_MAC = '04:F4:BC:37:FC:C0'
+TRAFFICGEN_PORT2_MAC = '04:F4:BC:37:FC:C1'
+TRAFFICGEN_PORT1_IP = '172.16.1.2'
+TRAFFICGEN_PORT2_IP = '192.168.1.11'
+
+# To test VXLAN set the ff to ixnetrfc2544v2.tcl
+TRAFFICGEN_IXNET_TCL_SCRIPT = 'ixnetrfc2544v2.tcl'
+
+# VXLAN traffic item
+
+VXLAN_VNI = '0'
+# TEST frame
+# dstmac should be set to the MAC address of the DUT's receiving port
+#VXLAN_FRAME_L2 = {'srcmac':
+#                  '01:02:03:04:05:06',
+#                  'dstmac':
+#                  '00:1b:21:b3:48:a9'}
+
+VXLAN_FRAME_L2 = {'srcmac': '01:02:03:04:05:06',
+                  'dstmac': 'a0:36:9f:95:08:ac',
+                 }
+
+# VXLAN is supported both in IxNetwork and IXIA IxExplorer
+# FOR IXIA IxExplorer - VXLAN INNER FRAME
+# The following lines can be removed if IXIA support will be dropped:
+# 'protocolpad': 'true',
+# 'protocolpadbytes':
+# '080000000000630006050403020101020304050608004500002e000000004011095bc0a' \
+# '8000ac0a8f0090bb80bb9001a2e93000102030405060708090a0b0c0d0e0f1011',
+# protocolpadbytes contains the following values:
+# VxLAN header with VNI 99 (0x63)
+# Inner SRC 01:02:03:04:05:06
+# Inner DST 06:05:04:03:02:01
+# IP SRC 192.168.0.2
+# IP DST 192.168.240.9
+# SRC port 3000 (0x0BB8)
+# DST port 3001 (0x0BB9)
+# length 26
+# UDP Checksum 0x2E93
+
+VXLAN_FRAME_L3 = {'proto': 'udp',
+                  'packetsize': 512,
+                  'srcip': '172.16.1.2',
+                  'dstip': '172.16.1.1',
+                 }
+
+VXLAN_FRAME_L4 = {'srcport': 52800,
+                  'dstport': 4789,
+                  'vni': 0,
+                  'inner_srcmac': '01:02:03:04:05:06',
+                  'inner_dstmac': '06:05:04:03:02:01',
+                  'inner_srcip': '192.168.1.2',
+                  'inner_dstip': '192.168.1.11',
+                  'inner_proto': 'udp',
+                  'inner_srcport': 3000,
+                  'inner_dstport': 3001,
+                 }
+
+# TEST frame
+# dstmac should be set to the MAC address of the DUT's receiving port
+GRE_FRAME_L2 = {'srcmac': '01:02:03:04:05:06',
+                'dstmac': 'a0:36:9f:95:08:ac',
+               }
+
+GRE_FRAME_L3 = {'proto': 'udp',
+                'packetsize': 512,
+                'srcip': '172.16.1.2',
+                'dstip': '172.16.1.1',
+               }
+
+GRE_FRAME_L4 = {'srcport': 52800,
+                'dstport': 0,
+                'key_present': 0,
+                'key': 0,
+                'inner_srcmac': '01:02:03:04:05:06',
+                'inner_dstmac': '06:05:04:03:02:01',
+                'inner_srcip': '192.168.1.2',
+                'inner_dstip': '192.168.1.11',
+                'inner_proto': 'udp',
+                'inner_srcport': 3000,
+                'inner_dstport': 3001,
+               }
+
+
+# TEST frame
+# dstmac should be set to the MAC address of the DUT's receiving port
+GENEVE_FRAME_L2 = {'srcmac': '01:02:03:04:05:06',
+                   'dstmac': 'a0:36:9f:95:08:ac',
+                  }
+
+GENEVE_FRAME_L3 = {'proto': 'udp',
+                   'packetsize': 512,
+                   'srcip': '172.16.1.2',
+                   'dstip': '172.16.1.1',
+                  }
+
+# UDP source/destination port (OUTER FRAME)
+# Variables with prefix inner_ are for the
+# INNER_FRAME
+GENEVE_FRAME_L4 = {'srcport': 52800,
+                   'dstport': 6081,
+                   'geneve_vni': 0,
+                   'inner_srcmac': '01:02:03:04:05:06',
+                   'inner_dstmac': '06:05:04:03:02:01',
+                   'inner_srcip': '192.168.1.2',
+                   'inner_dstip': '192.168.1.11',
+                   'inner_proto': 'udp',
+                   'inner_srcport': 3000,
+                   'inner_dstport': 3001,
+                  }

@@ -299,7 +299,11 @@ class Xena(ITrafficGenerator):
             'dstip'] if not reverse else settings.GRE_FRAME_L3['srcip']
         layer2 = inet.Ether(src=srcmac, dst=dstmac)
         layer3 = inet.IP(src=srcip, dst=dstip,proto=settings.GRE_FRAME_L3['proto'])
-        gre = GRE(key_present=settings.GRE_FRAME_L4['key_present'],key=settings.GRE_FRAME_L4['key'])
+        #gre = GRE(key_present=settings.GRE_FRAME_L4['key_present'],key=settings.GRE_FRAME_L4['key'])
+        gre = GRE(proto=0x6558)
+        inner_srcmac = settings.GRE_FRAME_L4['inner_srcmac']
+        inner_dstmac = settings.GRE_FRAME_L4['inner_dstmac']
+        gre_layer2 = inet.Ether(src=inner_srcmac, dst=inner_dstmac)
         inner_srcip = settings.GRE_FRAME_L4['inner_srcip']
         inner_dstip = settings.GRE_FRAME_L4['inner_dstip']
         gre_layer3 = inet.IP(src=inner_srcip, dst=inner_dstip,
@@ -310,8 +314,7 @@ class Xena(ITrafficGenerator):
             vlan = self._build_vlan_header()
             return layer2/vlan/layer3/gre/gre_layer3/gre_layer4
         else:
-            return layer2/layer3/gre/gre_layer3/gre_layer4
-            #return layer2/layer3/gre/fuzz(Ether(dst="00:00:00:00:00:03")/IP(dst="10.0.0.2")/TCP()/Raw(load="this is an encapsulation test"))
+            return layer2/layer3/gre/gre_layer2/gre_layer3/gre_layer4
    
     def _build_vlan_header(self):
         """
@@ -406,7 +409,7 @@ class Xena(ITrafficGenerator):
                     j_file.set_header_layer3(src_ip=self._params['traffic']['l3']['srcip'],dst_ip=self._params['traffic']['l3']['dstip'],protocol=self._params['traffic']['l3']['proto'])
                     j_file.set_header_layer4_udp(source_port=self._params['traffic']['l4']['srcport'],destination_port=self._params['traffic']['l4']['dstport'])
 
-                elif self._params['traffic']['tunnel_type'] == 'vxlan' and self._params['traffic']['tunnel_method']['decap'] == True:
+                elif self._params['traffic']['tunnel_type'] == 'vxlan' and 'decap' in settings.getValue('EXACT_TEST_NAME')[0]:
                     j_file.set_header_layer2(src_mac=settings.VXLAN_FRAME_L2['srcmac'],dst_mac=settings.VXLAN_FRAME_L2['dstmac'])
                     j_file.set_header_layer3(src_ip=settings.VXLAN_FRAME_L3['srcip'],dst_ip=settings.VXLAN_FRAME_L3['dstip'],protocol=settings.VXLAN_FRAME_L3['proto'])
                     j_file.set_header_layer4_udp(source_port=settings.VXLAN_FRAME_L4['srcport'],destination_port=settings.VXLAN_FRAME_L4['dstport'])
@@ -415,7 +418,7 @@ class Xena(ITrafficGenerator):
                     j_file.set_header_vxlan_layer3(src_ip=settings.VXLAN_FRAME_L4['inner_srcip'],dst_ip=settings.VXLAN_FRAME_L4['inner_dstip'],protocol=settings.VXLAN_FRAME_L4['inner_proto'])
                     j_file.set_header_vxlan_layer4(source_port=settings.VXLAN_FRAME_L4['inner_srcport'],destination_port=settings.VXLAN_FRAME_L4['inner_dstport'])
 
-                elif self._params['traffic']['tunnel_type'] == 'geneve' and self._params['traffic']['tunnel_method']['decap'] == True:
+                elif self._params['traffic']['tunnel_type'] == 'geneve' and 'decap' in settings.getValue('EXACT_TEST_NAME')[0]:
                     j_file.set_header_layer2(src_mac=settings.GENEVE_FRAME_L2['srcmac'],dst_mac=settings.GENEVE_FRAME_L2['dstmac'])
                     j_file.set_header_layer3(src_ip=settings.GENEVE_FRAME_L3['srcip'],dst_ip=settings.GENEVE_FRAME_L3['dstip'],protocol=settings.GENEVE_FRAME_L3['proto'])
                     j_file.set_header_layer4_udp(source_port=settings.GENEVE_FRAME_L4['srcport'],destination_port=settings.GENEVE_FRAME_L4['dstport'])
@@ -424,14 +427,15 @@ class Xena(ITrafficGenerator):
                     j_file.set_header_geneve_layer3(src_ip=settings.GENEVE_FRAME_L4['inner_srcip'],dst_ip=settings.GENEVE_FRAME_L4['inner_dstip'],protocol=settings.GENEVE_FRAME_L4['inner_proto'])
                     j_file.set_header_geneve_layer4(source_port=settings.GENEVE_FRAME_L4['inner_srcport'],destination_port=settings.GENEVE_FRAME_L4['inner_dstport'])
                 
-                elif self._params['traffic']['tunnel_type'] == 'gre' and self._params['traffic']['tunnel_method']['decap'] == True:
+                elif self._params['traffic']['tunnel_type'] == 'gre' and 'decap' in settings.getValue('EXACT_TEST_NAME')[0]:
                     j_file.set_header_layer2(src_mac=settings.GRE_FRAME_L2['srcmac'],dst_mac=settings.GRE_FRAME_L2['dstmac'])
                     j_file.set_header_layer3(src_ip=settings.GRE_FRAME_L3['srcip'],dst_ip=settings.GRE_FRAME_L3['dstip'],protocol=settings.GRE_FRAME_L3['proto'])
-                    j_file.set_header_gre(key_present=settings.GRE_FRAME_L4['key_present'],key=settings.GRE_FRAME_L4['key'])
+                    j_file.set_header_gre(proto=0x6558)
+                    j_file.set_header_gre_layer2(src_mac=settings.GRE_FRAME_L4['inner_srcmac'],dst_mac=settings.GRE_FRAME_L4['inner_dstmac'])
                     j_file.set_header_gre_layer3(src_ip=settings.GRE_FRAME_L4['inner_srcip'],dst_ip=settings.GRE_FRAME_L4['inner_dstip'],protocol=settings.GRE_FRAME_L4['inner_proto'])
                     j_file.set_header_gre_layer4(source_port=settings.GRE_FRAME_L4['inner_srcport'],destination_port=settings.GRE_FRAME_L4['inner_dstport'])
                 
-                elif self._params['traffic']['tunnel_type'] in ['vxlan','geneve','gre'] and self._params['traffic']['tunnel_method']['encap'] == True:
+                elif self._params['traffic']['tunnel_type'] in ['vxlan','geneve','gre']:
                     j_file.set_header_layer2(dst_mac=self._params['traffic']['l2']['dstmac'],src_mac=self._params['traffic']['l2']['srcmac'])
                     j_file.set_header_layer3(src_ip=self._params['traffic']['l3']['srcip'],dst_ip=self._params['traffic']['l3']['dstip'],protocol=self._params['traffic']['l3']['proto'])
                     j_file.set_header_layer4_udp(source_port=self._params['traffic']['l4']['srcport'],destination_port=self._params['traffic']['l4']['dstport'])
