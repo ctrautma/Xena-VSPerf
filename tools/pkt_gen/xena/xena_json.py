@@ -112,7 +112,7 @@ class XenaJSON(object):
         ]
 
         self.json_data['StreamProfileHandler']['EntityList'][entity][
-            'StreamConfig']['HwModifiers'].append(segments)
+            'StreamConfig']['HwModifiers'] = segments
 
     def _create_packet_header(self):
         """
@@ -236,28 +236,18 @@ class XenaJSON(object):
         
         if self.packet_data['vxlan']:
             add_segment('vxlan', "Raw")
-        if self.packet_data['vxlan_layer2']:
             add_segment('vxlan_layer2', "ETHERNET")
-        if self.packet_data['vxlan_layer3']:
             add_segment('vxlan_layer3', "IP")
-        if self.packet_data['vxlan_layer4']:
             add_segment('vxlan_layer4', "UDP")
-        if self.packet_data['geneve']:
+        elif self.packet_data['geneve']:
             add_segment('geneve', "Raw")
-        if self.packet_data['geneve_layer2']:
             add_segment('geneve_layer2', "ETHERNET")
-        if self.packet_data['geneve_layer3']:
             add_segment('geneve_layer3', "IP")
-        if self.packet_data['geneve_layer4']:
             add_segment('geneve_layer4', "UDP")
-
-        if self.packet_data['gre']:
+        elif self.packet_data['gre']:
             add_segment('gre', "Raw")
-        if self.packet_data['gre_layer2']:
             add_segment('gre_layer2', "ETHERNET")
-        if self.packet_data['gre_layer3']:
             add_segment('gre_layer3', "IP")
-        if self.packet_data['gre_layer4']:
             add_segment('gre_layer4', "UDP")
   
         self.json_data['StreamProfileHandler']['EntityList'][0][
