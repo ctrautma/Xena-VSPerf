@@ -99,9 +99,9 @@ class Xena(ITrafficGenerator):
         if test_type == 'Throughput':
             results = OrderedDict()
             results[ResultsConstants.THROUGHPUT_RX_FPS] = int(
-                root[0][1][0][1].get('PortRxPps'))
-            results[ResultsConstants.THROUGHPUT_RX_MBPS] = int(
-                root[0][1][0][1].get('PortRxBpsL1')) / 1000000
+                root[0][1][0][0].get('PortRxPps')) + int(root[0][1][0][1].get('PortRxPps'))
+            results[ResultsConstants.THROUGHPUT_RX_MBPS] = (int(
+                root[0][1][0][0].get('PortRxBpsL1')) + int(root[0][1][0][1].get('PortRxBpsL1')))/ 1000000
             results[ResultsConstants.THROUGHPUT_RX_PERCENT] = (
                 100 - int(root[0][1][0].get('TotalLossRatioPcnt'))) * float(
                     root[0][1][0].get('TotalTxRatePcnt'))/100
@@ -112,20 +112,29 @@ class Xena(ITrafficGenerator):
             results[ResultsConstants.TX_RATE_PERCENT] = root[0][1][0].get(
                 'TotalTxRatePcnt')
             try:
-                results[ResultsConstants.MIN_LATENCY_NS] = float(
-                    root[0][1][0][0].get('MinLatency')) * 1000
+                if root[0][1][0][0].get('MinLatency') == 'NaN':
+                    results[ResultsConstants.MIN_LATENCY_NS] = 0
+                else:
+                    results[ResultsConstants.MIN_LATENCY_NS] = float(
+                        root[0][1][0][0].get('MinLatency')) * 1000
             except ValueError:
                 results[ResultsConstants.MIN_LATENCY_NS] = root[0][1][0][0].get(
                     'MinLatency')
             try:
-                results[ResultsConstants.MAX_LATENCY_NS] = float(
-                    root[0][1][0][0].get('MaxLatency')) * 1000
+                if root[0][1][0][0].get('MaxLatency') == 'NaN':
+                    results[ResultsConstants.MAX_LATENCY_NS] = 0
+                else:
+                    results[ResultsConstants.MAX_LATENCY_NS] = float(
+                        root[0][1][0][0].get('MaxLatency')) * 1000
             except ValueError:
                 results[ResultsConstants.MAX_LATENCY_NS] = root[0][1][0][0].get(
                     'MaxLatency')
             try:
-                results[ResultsConstants.AVG_LATENCY_NS] = float(
-                    root[0][1][0][0].get('AvgLatency')) * 1000
+                if root[0][1][0][0].get('AvgLatency') == 'NaN':
+                    results[ResultsConstants.AVG_LATENCY_NS] = 0
+                else:
+                    results[ResultsConstants.AVG_LATENCY_NS] = float(
+                        root[0][1][0][0].get('AvgLatency')) * 1000
             except ValueError:
                 results[ResultsConstants.AVG_LATENCY_NS] = root[0][1][0][0].get(
                     'AvgLatency')
@@ -350,7 +359,7 @@ class Xena(ITrafficGenerator):
                           dport=self._params['traffic']['l4']['dstport'])
 
         if 'tunnel_type' in self._params['traffic']:
-            if self._params['traffic']['tunnel_type'] == None:
+            if self._params['traffic']['tunnel_type'] is None:
                 if self._params['traffic']['vlan']['enabled']:
                     vlan = self._build_vlan_header()
                     packet = layer2/vlan/layer3/layer4
@@ -486,7 +495,7 @@ class Xena(ITrafficGenerator):
             j_file.add_header_segments(flows=self._params['traffic']['multistream'],multistream_layer=self._params['traffic']['stream_type'])
 
             # set duplex mode
-            if self._params['traffic']['bidir']:
+            if self._params['traffic']['bidir'] == "True":
                 j_file.set_topology_mesh()
             else:
                 j_file.set_topology_blocks()
