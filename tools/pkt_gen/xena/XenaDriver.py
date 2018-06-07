@@ -71,7 +71,9 @@ CMD_STOP_TRAFFIC = 'p_traffic off'
 CMD_STREAM_MODIFIER = 'ps_modifier'
 CMD_STREAM_MODIFIER_COUNT = 'ps_modifiercount'
 CMD_STREAM_MODIFIER_RANGE = 'ps_modifierrange'
-CMD_MEDIA = 'M_MEDIA' 
+CMD_MEDIA = 'm_media' 
+CMD_RESERVE_MODULE = 'm_reservation reserve'
+CMD_RELEASE_MODULE = 'm_reservation release'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -986,15 +988,31 @@ class XenaModule(object):
         """
         return self._module
 
-    def set_media(self, new_media):
-        command = make_module_command(self._module, CMD_MEDIA, new_media)
+    def reserve_module(self):
+        """Reserve the module
+        :return: Boolean True is response OK, False if error.
+        """
+        command = make_module_command(self._module, CMD_RESERVE_MODULE)
         return self._manager.driver.ask_verify(command)
 
+    def release_module(self):
+        """Reset the module
+        :return: Boolean True is response OK, False if error.
+        """
+        command = make_module_command(self._module, CMD_RELEASE_MODULE)
+        return self._manager.driver.ask_verify(command)
 
-def make_module_command(module, cmd, new_media):
-	command= "{} {} {}".format(module, cmd, new_media)
+    def set_media(self, new_media):
+        command = make_module_command(self._module, CMD_MEDIA, new_media)
+        self.reserve_module()
+        self._manager.driver.ask_verify(command)
+        self.release_module()
+
+def make_module_command(module, cmd, argument=''):
+        command= "{} {} {}".format(module, cmd, argument)
         _LOGGER.info("[Command Sent] : {}".format(command))
         return command
+
 
 def average_stats(stat1, stat2):
     """
