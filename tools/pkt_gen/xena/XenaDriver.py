@@ -71,9 +71,9 @@ CMD_STOP_TRAFFIC = 'p_traffic off'
 CMD_STREAM_MODIFIER = 'ps_modifier'
 CMD_STREAM_MODIFIER_COUNT = 'ps_modifiercount'
 CMD_STREAM_MODIFIER_RANGE = 'ps_modifierrange'
-CMD_MEDIA = 'm_media' 
-CMD_RESERVE_MODULE = 'm_reservation reserve'
-CMD_RELEASE_MODULE = 'm_reservation release'
+CMD_MEDIA = 'M_MEDIA'
+CMD_SPEED = 'M_CFPCONFIG'
+CMD_RESERVE_MODULE = 'M_RESERVATION'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -113,10 +113,12 @@ class SimpleSocket(object):
         """
         cmd += '\n'
         try:
-            self.sock.send(cmd.encode('utf-8'))
+            self.sock.send(cmd.encode('ascii', 'ignore'))
             return self.sock.recv(1024)
         except OSError:
-            return ''
+            return '<OSError>'
+        except socket.timeout:
+            return '<TIMEOUT>'
 
     def read_reply(self):
         """ Get the response from the socket
@@ -212,7 +214,7 @@ class XenaSocketDriver(SimpleSocket):
         :param cmd: Command to send
         :return: Boolean True if command response is good, False otherwise
         """
-        resp = self.ask(cmd).decode('utf-8').strip('\n')
+        resp = self.ask(cmd).decode('utf-8', 'ignore').strip('\n')
         _LOGGER.info('[ask_verify] {}'.format(resp))
         if resp == self.reply_ok:
             return True
@@ -992,21 +994,46 @@ class XenaModule(object):
         """Reserve the module
         :return: Boolean True is response OK, False if error.
         """
-        command = make_module_command(self._module, CMD_RESERVE_MODULE)
+        command = make_module_command(self._module, CMD_RESERVE_MODULE, 'RESERVE')
         return self._manager.driver.ask_verify(command)
 
     def release_module(self):
-        """Reset the module
+        """Reset the port
         :return: Boolean True is response OK, False if error.
         """
-        command = make_module_command(self._module, CMD_RELEASE_MODULE)
+        command = make_module_command(self._module, CMD_RESERVE_MODULE, 'RELEASE')
         return self._manager.driver.ask_verify(command)
 
-    def set_media(self, new_media):
-        command = make_module_command(self._module, CMD_MEDIA, new_media)
+    def set_media(self, media):
+        """Changes Xena module media
+        :return: Boolean True is response OK, False if error.
+        """
+        command = make_module_command(self._module, CMD_MEDIA, str(media))
+        return self._manager.driver.ask_verify(command)
+
+    def set_speed(self, ports, speed):
+        """Changes Xena module speed
+        :return: Boolean True is response OK, False if error.
+        Currently can only be used for 25G and 100G
+        """
+        arg = str(ports) + " " + str(speed)
+        command = make_module_command(self._module, CMD_SPEED, arg)
+        return self._manager.driver.ask_verify(command)
+
+    def change_media(self, media):
         self.reserve_module()
-        self._manager.driver.ask_verify(command)
+        self.set_media(media)
+        time.sleep(10)
+
+        if media == "SFP28":
+            self.set_speed(2, 25)
+        elif media == "QSFP28":
+            self.set_speed(1, 100)
+        else:
+            pass
+        
         self.release_module()
+
 
 def make_module_command(module, cmd, argument=''):
         command= "{} {} {}".format(module, cmd, argument)
