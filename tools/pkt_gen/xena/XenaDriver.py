@@ -114,7 +114,7 @@ class SimpleSocket(object):
         cmd += '\n'
         try:
             self.sock.send(cmd.encode('ascii', 'ignore'))
-            return self.sock.recv(1024)
+            return self.sock.recv(1024).decode('utf-8', 'ignore').strip('\n')
         except OSError:
             return '<OSError>'
         except socket.timeout:
@@ -214,7 +214,7 @@ class XenaSocketDriver(SimpleSocket):
         :param cmd: Command to send
         :return: Boolean True if command response is good, False otherwise
         """
-        resp = self.ask(cmd).decode('utf-8', 'ignore').strip('\n')
+        resp = self.ask(cmd)
         _LOGGER.info('[ask_verify] {}'.format(resp))
         if resp == self.reply_ok:
             return True
@@ -1204,4 +1204,3 @@ if __name__ == '__main__':
                                                      PACKET_SIZE)))
     print("TXPercentage = {}".format(line_percentage(PORT0, TX_STAT, DURATION,
                                                      PACKET_SIZE)))
-
