@@ -18,7 +18,7 @@ def run(args):
         speed = args.speed[0]
         run_module(X_MANAGER, speed)
     else:
-        pass
+        print("Unknown --run parameter. Acceptable values are: module.")
     
 
 def run_module(X_MANAGER, speed):
@@ -27,7 +27,7 @@ def run_module(X_MANAGER, speed):
     elif speed == 100:
         media = "QSFP28"
     else:
-        pass
+        print("Incorrect speed value. Supported values are 25, 100.")
     
     print("Changing speed to {}G".format(speed)) 
     
