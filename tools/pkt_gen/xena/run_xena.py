@@ -18,7 +18,7 @@ def run(args):
     if run == "module":
         speed = args.speed[0]
         if ip == "10.73.132.19":
-            run_10_73_130_15(X_MANAGER, speed):
+            run_10_73_130_15(X_MANAGER, speed)
         else:
             run_10_19_15_102(X_MANAGER, speed)
     else:
