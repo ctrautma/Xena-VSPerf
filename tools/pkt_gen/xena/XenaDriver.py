@@ -1034,6 +1034,13 @@ class XenaModule(object):
         
         self.release_module()
 
+    def change_speed(self, ports, speed):
+        self.reserve_module()
+        self.set_speed(ports, speed)
+        self.release_module()
+
+
+
 
 def make_module_command(module, cmd, argument=''):
         command= "{} {} {}".format(module, cmd, argument)

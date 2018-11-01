@@ -10,18 +10,39 @@ from XenaDriver import *
 def run(args):
     PACKET_SIZE = 128
     DURATION = 10
-    DRIVER = XenaSocketDriver('10.19.15.19')
+    IP_ADDRESS = args.ip[0]
+    DRIVER = XenaSocketDriver(IP_ADDRESS)
     X_MANAGER = XenaManager(DRIVER, 'vsperf', 'xena')
     
     run = str(args.run[0]).lower()
     if run == "module":
         speed = args.speed[0]
-        run_module(X_MANAGER, speed)
+        if ip == "10.73.132.19":
+            run_10_73_130_15(X_MANAGER, speed):
+        else:
+            run_10_19_15_102(X_MANAGER, speed)
     else:
         print("Unknown --run parameter. Acceptable values are: module.")
     
+#Function to change speed on NAY Xena
+def run_10_72_130_15(X_MANAGER, speed):
+    if speed == 25:
+        ports = 8
+    elif speed == 100:
+        ports = 1
+    else:
+        print("Incorrect speed value. Supported values are 25, 100.")
 
-def run_module(X_MANAGER, speed):
+    print("Changing speed to {}G".format(speed))
+    
+    X_MODULE = XenaModule(X_MANAGER, 9)
+    X_MODULE.change_speed(ports, speed)
+
+    print("Media Speed Changed to {}G".format(speed))
+
+
+#Function to change speed on Bos Xena
+def run_10_19_15_102(X_MANAGER, speed):
     if speed == 25:
         media = "SFP28"
     elif speed == 100:
@@ -41,6 +62,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='To Access Xena Driver classes')
     parser.add_argument('--run', nargs='+', type=str, help='Class to run from XenaDriver')
     parser.add_argument('--speed', nargs=1, type=int, help='Module speed to change it to', required=True)
+    parser.add_argument('--ip', nargs=1, type=str, help='IP Address of a chassis to use. Either 10.19.15.102 or 10.72.130.19')
    
     args = parser.parse_args()
     run(args) 
