@@ -33,13 +33,12 @@ def run_10_73_130_19(X_MANAGER, speed):
     elif speed == 100:
         ports = 2
     else:
-        print("Incorrect speed value. Supported values are 25, 100.")
+        print("Incorrect speed value. Supported values are 25(8*25), 100(2*100). For other configurations pass --speed and --port as argument")
+        return 0
 
     print("Changing speed to {}G".format(speed))
-    
     X_MODULE = XenaModule(X_MANAGER, 5)
     X_MODULE.change_speed(ports, speed)
-
     print("Media Speed Changed to {}G".format(speed))
 
 
@@ -51,12 +50,11 @@ def run_10_19_15_102(X_MANAGER, speed):
         media = "QSFP28"
     else:
         print("Incorrect speed value. Supported values are 25, 100.")
-    
-    print("Changing speed to {}G".format(speed)) 
-    
+        return 0
+
+    print("Changing speed to {}G".format(speed))     
     X_MODULE = XenaModule(X_MANAGER, 9)
     X_MODULE.change_media(media)
-    
     print("Media Speed Changed to {}G".format(speed))
 
 
