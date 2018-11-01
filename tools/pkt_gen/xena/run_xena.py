@@ -23,7 +23,7 @@ def run(args):
             run_10_19_15_102(X_MANAGER, speed)
     else:
         print("Unknown --run parameter. Acceptable values are: module.")
-    
+
 #Function to change speed on NAY Xena
 def run_10_72_130_15(X_MANAGER, speed):
     if speed == 25:
