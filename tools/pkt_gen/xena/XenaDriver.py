@@ -1037,8 +1037,8 @@ class XenaModule(object):
     def change_speed(self, ports, speed):
         self.reserve_module()
         self.set_speed(ports, speed)
-	time.sleep(10)
-	self.release_module()
+        time.sleep(10)
+        self.release_module()
 
 
 
