@@ -10,7 +10,11 @@ from XenaDriver import *
 def run(args):
     PACKET_SIZE = 128
     DURATION = 10
-    IP_ADDRESS = args.ip[0]
+    if args.ip is not None:
+        IP_ADDRESS = args.ip[0]
+    else:
+        IP_ADDRESS='10.19.15.19'
+
     DRIVER = XenaSocketDriver(IP_ADDRESS)
     X_MANAGER = XenaManager(DRIVER, 'vsperf', 'xena')
     
@@ -20,7 +24,7 @@ def run(args):
         if IP_ADDRESS == "10.73.130.19":
             run_10_73_130_19(X_MANAGER, speed)
         else:
-            run_10_19_15_102(X_MANAGER, speed)
+            run_10_19_15_19(X_MANAGER, speed)
     else:
         print("Unknown --run parameter. Acceptable values are: module.")
 
@@ -43,7 +47,7 @@ def run_10_73_130_19(X_MANAGER, speed):
 
 
 #Function to change speed on Bos Xena
-def run_10_19_15_102(X_MANAGER, speed):
+def run_10_19_15_19(X_MANAGER, speed):
     if speed == 25:
         media = "SFP28"
     elif speed == 100:
@@ -62,7 +66,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='To Access Xena Driver classes')
     parser.add_argument('--run', nargs='+', type=str, help='Class to run from XenaDriver')
     parser.add_argument('--speed', nargs=1, type=int, help='Module speed to change it to', required=True)
-    parser.add_argument('--ip', nargs=1, type=str, help='IP Address of a chassis to use. Either 10.19.15.102 or 10.73.130.19')
+    parser.add_argument('--ip', nargs=1, type=str, help='IP Address of a chassis to use. Either 10.19.15.19 or 10.73.130.19')
     parser.add_argument('--port', nargs=1, type=int, help='Number of ports to configure')
  
     args = parser.parse_args()
