@@ -29,7 +29,7 @@ def run_10_72_130_15(X_MANAGER, speed):
     if speed == 25:
         ports = 8
     elif speed == 100:
-        ports = 1
+        ports = 2
     else:
         print("Incorrect speed value. Supported values are 25, 100.")
 
