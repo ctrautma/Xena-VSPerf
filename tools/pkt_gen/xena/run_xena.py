@@ -17,15 +17,15 @@ def run(args):
     run = str(args.run[0]).lower()
     if run == "module":
         speed = args.speed[0]
-        if ip == "10.73.132.19":
-            run_10_73_130_15(X_MANAGER, speed)
+        if IP_ADDRESS == "10.73.132.19":
+            run_10_73_130_19(X_MANAGER, speed)
         else:
             run_10_19_15_102(X_MANAGER, speed)
     else:
         print("Unknown --run parameter. Acceptable values are: module.")
 
 #Function to change speed on NAY Xena
-def run_10_72_130_15(X_MANAGER, speed):
+def run_10_73_130_19(X_MANAGER, speed):
     if speed == 25:
         ports = 8
     elif speed == 100:
