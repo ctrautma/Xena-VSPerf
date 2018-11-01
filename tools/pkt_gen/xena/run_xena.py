@@ -35,7 +35,7 @@ def run_10_72_130_15(X_MANAGER, speed):
 
     print("Changing speed to {}G".format(speed))
     
-    X_MODULE = XenaModule(X_MANAGER, 9)
+    X_MODULE = XenaModule(X_MANAGER, 5)
     X_MODULE.change_speed(ports, speed)
 
     print("Media Speed Changed to {}G".format(speed))
