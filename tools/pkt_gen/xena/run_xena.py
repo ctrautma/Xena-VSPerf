@@ -26,7 +26,9 @@ def run(args):
 
 #Function to change speed on NAY Xena
 def run_10_73_130_19(X_MANAGER, speed):
-    if speed == 25:
+    if args.port is not None:
+        ports = args.port[0]
+    elif speed == 25:
         ports = 8
     elif speed == 100:
         ports = 2
@@ -62,7 +64,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='To Access Xena Driver classes')
     parser.add_argument('--run', nargs='+', type=str, help='Class to run from XenaDriver')
     parser.add_argument('--speed', nargs=1, type=int, help='Module speed to change it to', required=True)
-    parser.add_argument('--ip', nargs=1, type=str, help='IP Address of a chassis to use. Either 10.19.15.102 or 10.72.130.19')
-   
+    parser.add_argument('--ip', nargs=1, type=str, help='IP Address of a chassis to use. Either 10.19.15.102 or 10.73.130.19')
+    parser.add_argument('--port', nargs=1, type=int, help='Number of ports to configure')
+ 
     args = parser.parse_args()
     run(args) 
