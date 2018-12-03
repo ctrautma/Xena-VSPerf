@@ -23,6 +23,8 @@ def run(args):
         speed = args.speed[0]
         if IP_ADDRESS == "10.73.130.19":
             run_10_73_130_19(X_MANAGER, speed)
+        elif IP_ADDRESS == "10.73.88.3":
+            run_10_73_130_19(X_MANAGER, speed)
         else:
             run_10_19_15_19(X_MANAGER, speed)
     else:
