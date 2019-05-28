@@ -1020,7 +1020,7 @@ class XenaModule(object):
         command = make_module_command(self._module, CMD_SPEED, arg)
         return self._manager.driver.ask_verify(command)
 
-    def change_media(self, media):
+    def change_media(self, media, speed):
         self.reserve_module()
         self.set_media(media)
         time.sleep(10)
@@ -1028,7 +1028,7 @@ class XenaModule(object):
         if media == "SFP28":
             self.set_speed(2, 25)
         elif media == "QSFP28":
-            self.set_speed(1, 100)
+            self.set_speed(1, speed)
         else:
             pass
         

@@ -5,7 +5,7 @@ USAGE:
 """
 import argparse
 from XenaDriver import *
-
+import time
 
 def run(args):
     PACKET_SIZE = 128
@@ -54,13 +54,18 @@ def run_10_19_15_19(X_MANAGER, speed):
         media = "SFP28"
     elif speed == 100:
         media = "QSFP28"
+    elif speed == 40:
+        media = "QSFP28"
     else:
-        print("Incorrect speed value. Supported values are 25, 100.")
+        print("Incorrect speed value. Supported values are 25, 40, 100.")
         return 0
 
     print("Changing speed to {}G".format(speed))     
     X_MODULE = XenaModule(X_MANAGER, 9)
-    X_MODULE.change_media(media)
+    X_MODULE.change_media(media, speed)
+    time.sleep(10)
+    
+    
     print("Media Speed Changed to {}G".format(speed))
 
 
